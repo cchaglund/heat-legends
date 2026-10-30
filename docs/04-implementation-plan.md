@@ -30,6 +30,14 @@ No app UI and no track annotation. TypeScript + OpenCV.js running in Node. The s
 
 **Exit:** the go/no-go bar is met on the training sets *and* the held-out set. If it can't be met → rethink: ArUco, a stand-alone ML detector, a different capture UX, or fall back to tap-first.
 
+## M1b — Phone benchmark (concept check, right after M1 detection)
+Before building any app on top of it: does the pipeline run fast enough on a **real phone**?
+- A bare bench page (`/bench.html`) runs the M1 pipeline (registration → normalization → detection) in a Web Worker, on (a) bundled fixture photos and (b) a fresh camera capture.
+- It reports the time per stage, plus the OpenCV.js download and init time. Run it on your phone, plus at least one older or cheaper phone (iOS and Android if possible).
+- Served from the laptop over LAN HTTPS (`npm run dev`), so no deployment is needed.
+- **Targets:** snapshot ≤ ~1.5s from tap to overlay on a mid-range phone; registration-only ≤ ~150ms per frame for M6 live.
+- **If it misses:** optimize first (resolution, feature count, fewer tilt passes, cached reference descriptors). If that's still not enough, rework the concept: e.g. snapshot-only with no live mode, or ask for a steadier, closer shot.
+
 ## M2 — Rules engine (no UI; can run in parallel with M1)
 - Track model types, plus a tiny synthetic test track.
 - `resolveLegendMove`, covering all the rule branches: behind the Legends Line, between line and corner, the 2-corner cap, full spaces → back to the first free spot, raceline spot choice (D13).
