@@ -1,0 +1,16 @@
+{
+  "_source": "legend-cards.txt (transcribed by hand). B15/B17 interpreted as Blue.",
+  "cards": [
+    { "id": 1,  "cars": { "silver": [11, 0], "blue": [13, 1], "yellow": [14, 1], "black": [15, 2], "red": [18, 3], "green": [19, 3] } },
+    { "id": 2,  "cars": { "green": [10, 0], "red": [11, 0], "silver": [13, 1], "blue": [14, 1], "yellow": [15, 2], "black": [17, 2] } },
+    { "id": 3,  "cars": { "blue": [12, 1], "black": [14, 1], "silver": [16, 2], "red": [15, 2], "yellow": [17, 2], "green": [18, 3] } },
+    { "id": 4,  "cars": { "yellow": [11, 0], "red": [13, 1], "silver": [14, 1], "black": [16, 2], "green": [15, 2], "blue": [18, 3] } },
+    { "id": 5,  "cars": { "green": [12, 1], "yellow": [13, 1], "blue": [16, 2], "red": [17, 2], "black": [18, 3], "silver": [19, 3] } },
+    { "id": 6,  "cars": { "blue": [10, 0], "yellow": [12, 1], "green": [13, 1], "red": [14, 1], "silver": [18, 3], "black": [19, 3] } },
+    { "id": 7,  "cars": { "silver": [10, 0], "black": [11, 0], "red": [12, 1], "green": [14, 1], "yellow": [16, 2], "blue": [19, 3] } },
+    { "id": 8,  "cars": { "black": [10, 0], "green": [11, 0], "red": [16, 2], "blue": [15, 2], "silver": [17, 2], "yellow": [18, 3] } },
+    { "id": 9,  "cars": { "yellow": [10, 0], "blue": [11, 0], "black": [12, 1], "silver": [15, 2], "green": [17, 2], "red": [19, 3] } },
+    { "id": 10, "cars": { "red": [10, 0], "silver": [12, 1], "black": [13, 1], "green": [16, 2], "blue": [17, 2], "yellow": [19, 3] } }
+  ],
+  "_format": "cars[colour] = [topSpeed, diamond]"
+}

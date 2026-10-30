@@ -1,0 +1,16 @@
+X axis is corner
+Y axis is card number
+
+
+
+         0               1              2            3
+1        S11             Blu13,Y14      Bla15        R18,G19
+2        G10,R11         S13,Blu14      Y15,Bla17    -
+3        -               Blu12,Bla14    S16,R15,Y17  G18
+4        Y11             R13,S14        Bla16,G15    Blu18
+5        -               G12,Y13        Blu16,R17    Bla18,S19
+6        Blu10           Y12,G13,R14    -            S18,Bla19
+7        S10,Bla11       R12,G14        Y16          Blu19
+8        Bla10,G11       -              R16,Blu15,S17  Y18
+9        Y10,Blu11       Bla12          S15,G17      R19
+10       R10             S12,Bla13      G16,Blu17      Y19

@@ -1,0 +1,64 @@
+Legends Module
+Legends are automated drivers you can compete against in
+solo mode or as additional opponents in multiplayer games.
+They are controlled by a single deck of Legends cards. Much
+like players, if a Legend is close to a corner it will try to clear it
+but sometimes fail. If it is far from a corner it will move as fast
+as possible, without overshooting.
+We suggest racing with Legends if there are less than 4 players
+in the game, and adding a minimum of two Legends if adding
+any at all. However there is no right or wrong choice, so feel
+free to experiment.
+
+Setup
+• Shuffle the 10 Legends cards and place them face down
+on the Legends mat.
+• Pick as many Legend opponents as you want and add the
+cars to the mix when you randomly fill the Starting Grid.
+
+Using Legends
+Each round-when it is time for the first Legend to move in
+the Reveal & Move step-reveal the card from the top of the
+Legends deck. This card will be used by all Legends this round.
+Each Legend does either movement A or B depending on where
+its car is on the track relative to the Legends Line.
+The LegendsLine helps the automated drivers decide how
+to handle corners. If they are past the Legends Line, they will
+tackle the curve more aggressively. Otherwise, they will get as
+close to the Corner Line as they can without going past it.
+
+A: Clearing Corners
+If a Legend has crossed the Legends Line (its car is between
+the Legends Line and the next Corner Line), move the car for-
+ward as many Spaces as the Speed Limit of the upcoming Cor-
+ner Line plus the number in the Diamond above the helmet in
+its color on the revealed card.
+Note: Legends may not cross 2 Corner Lines in the same move.
+If this is about to happen, place the Legend car on the first
+Space with a free Spot before the second Corner Line.
+
+B: Approaching Corners
+It a Legend has not crossed the Legends Line, it will try to get
+as close to the next Corner Line as possible, without going past
+it. There are two possible outcomes:
+• If the Legend can move at its Top Speed (the number
+inside the helmet in its color) without crossing the next
+Corner Line, it will do so.
+• If moving at that Top Speed would cause it to cross the
+next Corner Line, instead move the Legend forward to
+the space numbered 0-3 just before that Corner Line
+(based on the number in the Diamond above the helmet
+in its color).
+
+Additional Notes
+• Legends never Slipstream, use Heat, or Cool Down their
+cars.
+• Legends count when determining Adrenaline, even
+though they get no benefit from it.
+• When the Legends deck is empty, shuffle all cards into
+a new Legends deck.
+
+
+Clarification on turns:
+• Turn-by-Turn Movement: Starting with the car in the lead position (whether human or AI) and working your way back position-by-position, each car resolves its turn individually.
+• Activating Legends: When the turn order reaches the FIRST Legend car of the round, flip the top card of the Legends deck. That one card is used by ALL Legends this round. Each time the turn order reaches a Legend car, move that specific Legend car according to its rules (based on its position relative to the Legends line and corners) using its values on this round's card, before moving on to the next car in line.
