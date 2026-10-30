@@ -26,6 +26,20 @@ No app UI and no track annotation. TypeScript + OpenCV.js running in Node. The s
   - Successful photos have ~1.5–4k refine inliers at ~1.5px reprojection error. The checkerboard overlays show track lines continuing cleanly.
   - The single failure (`empty-light-a/13`) is a blurry, low-quality shot. That's the quality gate's job.
 - ⚠️ **Speed: ~4s per photo in Node on a laptop.** Too slow for a phone as it stands. To do before M5: smaller images (coarse at ~1000px), fewer features, caching the reference descriptors, and only re-running tilts on failure. For M6 live mode, track between frames (optical flow) instead of full re-registration.
+- 🚧 **Steps 2–4, detection: in progress** (`npm run vision:detect -- france pos-a` → `reports/detection/france/index.html`). Approach in `src/vision/detect.ts`:
+  - warp the photo into reference space;
+  - global histogram matching, then a local offset correction (large median filter) for glare;
+  - difference against the empty reference board, tolerant of misalignment (outside the local min/max range of the reference);
+  - limited to an automatic track mask (asphalt components of the reference);
+  - blobs → HSV colour costs → one-to-one DP assignment.
+
+  **Where it stands:** on `pos-a`, the six cars form tight consistent clusters across photos, but there's still noise: some photos give 20–80 spurious blobs (glare on asphalt, lane-line edges), so assignments are sometimes wrong. **Next:**
+  1. look at the effect of the glare correction just added;
+  2. filter blobs by car shape and size;
+  3. tune the colour priors per colour (black/silver especially);
+  4. run all sets, including the false-positive check on the `empty` sets;
+  5. build the review page (consensus position per colour per set → you confirm or correct → `truth.json`), then automatic metrics against D27;
+  6. then M1b phone benchmark.
 - ℹ️ The npm OpenCV.js build only has **ORB**: no AKAZE, SIFT or ArUco. That's fine so far. If a fallback is ever needed: a custom OpenCV.js build, or `js-aruco2`.
 
 **Exit:** the go/no-go bar is met on the training sets *and* the held-out set. If it can't be met → rethink: ArUco, a stand-alone ML detector, a different capture UX, or fall back to tap-first.

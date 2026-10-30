@@ -10,7 +10,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "fixtures:prep": "tsx tools/prep-fixtures.ts",
-    "vision:register": "tsx tools/register-report.ts"
+    "vision:register": "tsx tools/register-report.ts",
+    "vision:detect": "tsx tools/detect-report.ts"
   },
   "devDependencies": {
     "@preact/preset-vite": "2.10.6",
