@@ -18,14 +18,27 @@
 False detections on `empty-light-a`: 15 over 22 photos (yellow 7 at a fixed spot, silver 5, black 2, red 1). D27 wants ≤1 per 20 photos.
 The consensus check is a proxy until the user confirms `truth.json` via the review page.
 
-### Next actions (in order)
-1. **Own-board reference experiment** (running at the end of 2026-10-31): `tools/build-own-reference.ts` builds a per-pixel median of the empty-board photos in reference space (`reports/ref/france-empty-light-a.png`). `DETECT_REF=<png> DETECT_OUT=france-ownref npm run vision:detect -- france <set>` runs detection against it. Compare with the BGG reference on pos-a, pos-b-*, and **empty-light-b** (not -a: the reference was built from -a). If it's clearly better, propose to the user (new decision): the app builds and refines an own-board reference automatically from its own snapshots during play (per-pixel median over turns, with cars masked out), starting from the BGG scan.
-2. Remaining false positives: fixed-location ones (print differences) → solved by (1) if adopted. Otherwise add an "ignore" mask.
-3. Build the review page → `fixtures/france/<set>/truth.json` (D24): consensus position per colour per set, the user confirms or drags it.
-4. Replace the Python consensus check with `npm run test:vision` (TS): metrics vs truth, D27 bar, held-out `pos-b-light-b`.
-5. → M1b phone benchmark. Note: detection is also slow (~2–3s/photo in Node at 2000px reference) and needs the same diet as registration.
+### Own-board reference experiment (2026-10-31)
+Reference = per-pixel median of the 22 `empty-light-a` photos warped into reference space.
 
-Analysis helpers: `npm run vision:detect` writes `_<set>-blobs.json` (every blob with features and the assigned colour) next to the report. A throwaway Python consensus script was used for the table above; port it into the TS eval in step 4.
+| | BGG scan reference | Own-board reference |
+|---|---|---|
+| Coloured cars (pos-a / pos-b-a / pos-b-b) | 18–21/21, 19–21/23 | 14–21/21, 18–22/23, 27–30/30 |
+| Black / silver | 15–19 of 21–23 | **collapsed** (0–9): blobs fragment into separate dark and bright parts; thresholds were tuned for the BGG reference |
+| False positives on `empty-light-b` (31 photos) | 40 (yellow 27 at one fixed spot = print difference) | 37 (coloured only 4; black 25, silver 8) |
+
+Reading: the own-board reference **removes the print-difference false positives for coloured cars**, but the black/silver rules need re-tuning for it (merge nearby dark+bright fragments into one blob; recalibrate the dark/bright margins). **Caveat:** `pos-b-light-b` was meant to be the held-out set and has now been looked at. Pick a new hold-out (ideally new photos from another day) before final numbers.
+
+**Pending user decision (D29 candidate):** how the app gets an own-board reference: (a) a one-time "photograph your empty board" step per track, (b) built automatically during play from its own snapshots (cars masked out), starting from the BGG scan, or (c) skip it and stay with the BGG scan plus a fixed "ignore" mask for known print differences.
+
+### Next actions (in order)
+1. Get the user's answer on D29 (above).
+2. Merge nearby blob fragments (a larger closing, or merge blobs whose boxes are within ~15px) and re-tune the black/silver margins for whichever reference wins.
+3. Build the review page → `fixtures/france/<set>/truth.json` (D24): consensus position per colour per set, the user confirms or drags it.
+4. Port the Python consensus check to `npm run test:vision` (TS): metrics vs truth, D27 bar, new hold-out set.
+5. → M1b phone benchmark. Detection is also slow (~2–3s/photo in Node at 2000px) and needs the same diet as registration.
+
+Analysis helpers: `npm run vision:detect` writes `_<set>-blobs.json` (every blob with features and the assigned colour) next to the report.
 
 ## Task checklist
 
