@@ -2,7 +2,7 @@
 
 A phone web app that runs the **Legends** (AI drivers) in *Heat: Pedal to the Metal*. You point the camera at the board, and it shows where each Legend should move.
 
-Docs:
+Docs (start with **[Progress](docs/PROGRESS.md)** to see where things stand):
 1. [Idea](docs/01-idea.md)
 2. [How it works](docs/02-how-it-works.md): rules, round flow, modes
 3. [Architecture](docs/03-architecture.md)

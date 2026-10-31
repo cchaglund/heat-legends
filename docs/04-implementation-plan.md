@@ -1,5 +1,7 @@
 # Implementation plan
 
+This file is the **plan**: what each milestone contains and why. **Progress, the task checklist and the next action** live in [PROGRESS.md](PROGRESS.md).
+
 The order is set by risk: **car detection on real photos is the make-or-break part, so it comes first** (D26). Each later milestone ends with something usable.
 
 ## M0 — Scaffold (small)
@@ -18,29 +20,7 @@ No app UI and no track annotation. TypeScript + OpenCV.js running in Node. The s
 3. **Lighting normalization** against the reference image (D20).
 4. **Car finding + joint color assignment** for the 6 colors (D20).
 5. **Review loop** (D24). Generate a review page per set → you mark correct/wrong and click the true positions → `truth.json` per set, in reference-image pixels → automatic metrics from then on.
-6. Iterate: tune → `npm run test:vision` → compare against the go/no-go bar (Q-BAR).
-
-### Status (2026-10-30)
-- ✅ **Step 1, registration: 127/128 photos (99%)** pass the D27 bar (≥95%). See `npm run vision:register` → `reports/registration/france/index.html`.
-  - Two-pass ORB: a coarse pass with **tilt simulation** (the frame stretched vertically ×1, 1.7, 2.5 to undo shallow-angle foreshortening), then a refine pass on the frame pre-warped to top-down.
-  - Successful photos have ~1.5–4k refine inliers at ~1.5px reprojection error. The checkerboard overlays show track lines continuing cleanly.
-  - The single failure (`empty-light-a/13`) is a blurry, low-quality shot. That's the quality gate's job.
-- ⚠️ **Speed: ~4s per photo in Node on a laptop.** Too slow for a phone as it stands. To do before M5: smaller images (coarse at ~1000px), fewer features, caching the reference descriptors, and only re-running tilts on failure. For M6 live mode, track between frames (optical flow) instead of full re-registration.
-- 🚧 **Steps 2–4, detection: in progress** (`npm run vision:detect -- france pos-a` → `reports/detection/france/index.html`). Approach in `src/vision/detect.ts`:
-  - warp the photo into reference space;
-  - global histogram matching, then a local offset correction (large median filter) for glare;
-  - difference against the empty reference board, tolerant of misalignment (outside the local min/max range of the reference);
-  - limited to an automatic track mask (asphalt components of the reference);
-  - blobs → HSV colour costs → one-to-one DP assignment.
-
-  **Where it stands:** on `pos-a`, the six cars form tight consistent clusters across photos, but there's still noise: some photos give 20–80 spurious blobs (glare on asphalt, lane-line edges), so assignments are sometimes wrong. **Next:**
-  1. look at the effect of the glare correction just added;
-  2. filter blobs by car shape and size;
-  3. tune the colour priors per colour (black/silver especially);
-  4. run all sets, including the false-positive check on the `empty` sets;
-  5. build the review page (consensus position per colour per set → you confirm or correct → `truth.json`), then automatic metrics against D27;
-  6. then M1b phone benchmark.
-- ℹ️ The npm OpenCV.js build only has **ORB**: no AKAZE, SIFT or ArUco. That's fine so far. If a fallback is ever needed: a custom OpenCV.js build, or `js-aruco2`.
+6. Iterate: tune → `npm run test:vision` → compare against the go/no-go bar (D27).
 
 **Exit:** the go/no-go bar is met on the training sets *and* the held-out set. If it can't be met → rethink: ArUco, a stand-alone ML detector, a different capture UX, or fall back to tap-first.
 
