@@ -3,9 +3,12 @@
 // 1. Warp the frame onto the reference image with the registration H.
 // 2. Normalize lighting: per-channel linear fit frame → reference, on board
 //    pixels away from the track (robust, a few trimming rounds).
-// 3. Cars are what the empty reference board doesn't have: pixels on (or
-//    near) the track that differ strongly from the reference.
-// 4. Connected components → blobs → colour features.
+// 3. Cars are what the empty reference board doesn't have. A pixel on (or
+//    near) the track is a car candidate if it differs from the reference in
+//    a car-like way: clearly more colourful (red/blue/green/yellow), darker
+//    than the darkest nearby asphalt (black), or much brighter and grey
+//    (silver). Sheen on the asphalt — the main noise — is none of these.
+// 4. Connected components → blobs → colour + class features.
 // 5. Joint one-to-one assignment of blobs to the participating colours.
 import type { CV } from "./cv";
 import type { H3 } from "./homography";
@@ -20,6 +23,14 @@ export type Blob = {
   y: number;
   area: number;
   box: [number, number, number, number];
+  /** Mean colour distance from the reference over the blob's stronger half. */
+  strength: number;
+  /** area / bounding-box area. */
+  fill: number;
+  /** Fraction of the blob's pixels per candidate class. */
+  colourFrac: number;
+  darkFrac: number;
+  brightFrac: number;
   rgb: [number, number, number]; // mean normalized colour of the blob's strongest pixels
   hsv: [number, number, number]; // h 0–360, s 0–1, v 0–1
 };
@@ -43,6 +54,10 @@ export type ReferenceModel = {
    *  the difference tolerates 1–2px registration error at sharp edges. */
   lo: Uint8Array;
   hi: Uint8Array;
+  /** Value (max channel) of lo / hi, and the local max chroma, 0–255. */
+  vLo: Uint8Array;
+  vHi: Uint8Array;
+  chromaHi: Uint8Array;
   /** Asphalt (+ white lines) of the track, dilated: where cars can be. */
   track: Uint8Array;
   /** Board away from the track: used to fit the lighting. */
@@ -55,15 +70,18 @@ const OFFSET_WINDOW_PX = 120;
 const MIN_AREA = 120;
 const MAX_AREA = 3500;
 const MISSING_COST = 4;
+const MAX_DETECTION_COST = 2.5;
+const COLOUR = 1, DARK = 2, BRIGHT = 3;
 
 export function buildReferenceModel(cv: CV, ref: Rgb): ReferenceModel {
   const { width, height, data } = ref;
   const n = width * height;
   const asphalt = new cv.Mat(height, width, cv.CV_8UC1);
   for (let i = 0, j = 0; i < n; i++, j += 3) {
-    const [h, s, v] = rgbToHsv(data[j], data[j + 1], data[j + 2]);
-    void h;
-    asphalt.data[i] = v < 0.38 && s < 0.35 ? 255 : 0;
+    // Chroma, not saturation: saturation is unstable on near-black asphalt.
+    const max = Math.max(data[j], data[j + 1], data[j + 2]);
+    const chroma = max - Math.min(data[j], data[j + 1], data[j + 2]);
+    asphalt.data[i] = max < 97 && chroma < 33 ? 255 : 0;
   }
   // Close over the white lane markings, drop speckles, then grow so cars
   // whose tops stick out over the track edge still count.
@@ -76,14 +94,29 @@ export function buildReferenceModel(cv: CV, ref: Rgb): ReferenceModel {
   const lo = new cv.Mat(), hi = new cv.Mat();
   cv.erode(blurred, lo, k);
   cv.dilate(blurred, hi, k);
+  const chroma = new cv.Mat(height, width, cv.CV_8UC1);
+  for (let i = 0, j = 0; i < n; i++, j += 3) {
+    const b = blurred.data;
+    chroma.data[i] = Math.max(b[j], b[j + 1], b[j + 2]) - Math.min(b[j], b[j + 1], b[j + 2]);
+  }
+  const chromaHi = new cv.Mat();
+  cv.dilate(chroma, chromaHi, k);
+  const vOf = (m: any) => {
+    const out = new Uint8Array(n);
+    for (let i = 0, j = 0; i < n; i++, j += 3) out[i] = Math.max(m.data[j], m.data[j + 1], m.data[j + 2]);
+    return out;
+  };
   const out = {
     rgb: ref,
     lo: new Uint8Array(lo.data),
     hi: new Uint8Array(hi.data),
+    vLo: vOf(lo),
+    vHi: vOf(hi),
+    chromaHi: new Uint8Array(chromaHi.data),
     track: new Uint8Array(track.data),
     background: new Uint8Array(farFromTrack.data).map((v) => (v ? 0 : 255)),
   };
-  [asphalt, opened, track, farFromTrack, blurred, k, lo, hi].forEach((m) => m.delete());
+  [asphalt, opened, track, farFromTrack, blurred, k, lo, hi, chroma, chromaHi].forEach((m) => m.delete());
   return out;
 }
 
@@ -104,6 +137,7 @@ export function detectCars(
   // Distance from the reference's local colour range, on the track only.
   const a = blur(cv, normalized, 3);
   const diff = new Float32Array(n);
+  const cls = new Uint8Array(n);
   const maskMat = cv.Mat.zeros(height, width, cv.CV_8UC1);
   for (let i = 0, j = 0; i < n; i++, j += 3) {
     if (!valid[i] || !model.track[i]) continue;
@@ -115,12 +149,17 @@ export function detectCars(
     }
     const d = Math.sqrt(d2);
     diff[i] = d;
-    if (d > DIFF_THRESHOLD) maskMat.data[i] = 255;
+    const v = Math.max(a.data[j], a.data[j + 1], a.data[j + 2]);
+    const chroma = v - Math.min(a.data[j], a.data[j + 1], a.data[j + 2]);
+    if (d > DIFF_THRESHOLD && chroma > 55 && chroma > model.chromaHi[i] + 30) cls[i] = COLOUR;
+    else if (d > 25 && v < model.vLo[i] - 18) cls[i] = DARK;
+    else if (d > DIFF_THRESHOLD && chroma < 50 && v > model.vHi[i] + 30) cls[i] = BRIGHT;
+    if (cls[i]) maskMat.data[i] = 255;
   }
   const cleaned = morph(cv, morph(cv, maskMat, cv.MORPH_OPEN, 3, true), cv.MORPH_CLOSE, 9, true);
   const mask = new Uint8Array(cleaned.data);
 
-  const blobs = findBlobs(cv, cleaned, normalized, diff);
+  const blobs = findBlobs(cv, cleaned, normalized, diff, cls);
   cleaned.delete();
 
   return { blobs, detections: assign(blobs, colors), normalized, mask, diff };
@@ -192,7 +231,7 @@ function matchLut(src: Float64Array, ref: Float64Array): Uint8Array {
 
 // --- blobs ----------------------------------------------------------------
 
-function findBlobs(cv: CV, mask: any, img: Rgb, diff: Float32Array): Blob[] {
+function findBlobs(cv: CV, mask: any, img: Rgb, diff: Float32Array, cls: Uint8Array): Blob[] {
   const labels = new cv.Mat();
   const stats = new cv.Mat();
   const centroids = new cv.Mat();
@@ -206,16 +245,28 @@ function findBlobs(cv: CV, mask: any, img: Rgb, diff: Float32Array): Blob[] {
     const s = stats.data32S;
     const area = s[k * 5 + 4];
     if (area < MIN_AREA || area > MAX_AREA) continue;
-    // Colour from the half of the blob that differs most (drops edges/shadow).
-    const px = pixels[k].sort((p, q) => diff[q] - diff[p]).slice(0, Math.max(10, pixels[k].length >> 1));
-    let r = 0, g = 0, b = 0;
-    for (const p of px) { r += img.data[p * 3]; g += img.data[p * 3 + 1]; b += img.data[p * 3 + 2]; }
+    const all = pixels[k];
+    const frac = (c: number) => all.filter((p) => cls[p] === c).length / all.length;
+    const colourFrac = frac(COLOUR), darkFrac = frac(DARK), brightFrac = frac(BRIGHT);
+    // Colour from the colourful pixels if there are enough, else from the
+    // half of the blob that differs most (drops edges/shadow).
+    const colourful = all.filter((p) => cls[p] === COLOUR);
+    const px = colourful.length >= 20
+      ? colourful
+      : [...all].sort((p, q) => diff[q] - diff[p]).slice(0, Math.max(10, all.length >> 1));
+    let r = 0, g = 0, b = 0, strength = 0;
+    for (const p of px) { r += img.data[p * 3]; g += img.data[p * 3 + 1]; b += img.data[p * 3 + 2]; strength += diff[p]; }
     const rgb: [number, number, number] = [r / px.length, g / px.length, b / px.length];
     blobs.push({
       x: centroids.data64F[k * 2],
       y: centroids.data64F[k * 2 + 1],
       area,
       box: [s[k * 5], s[k * 5 + 1], s[k * 5 + 2], s[k * 5 + 3]],
+      strength: strength / px.length,
+      fill: area / (s[k * 5 + 2] * s[k * 5 + 3]),
+      colourFrac,
+      darkFrac,
+      brightFrac,
       rgb,
       hsv: rgbToHsv(...rgb),
     });
@@ -229,15 +280,23 @@ function findBlobs(cv: CV, mask: any, img: Rgb, diff: Float32Array): Blob[] {
 /** Cost of calling this blob `color`; lower is better, roughly 0–5. */
 export function colorCost(blob: Blob, color: CarColor): number {
   const [h, s, v] = blob.hsv;
-  const hueCenter: Partial<Record<CarColor, number>> = { red: 355, yellow: 48, green: 135, blue: 215 };
+  // Real cars are at least a few hundred px² in reference space.
+  const small = Math.max(0, 500 - blob.area) / 200;
+  const hueCenter: Partial<Record<CarColor, number>> = { red: 355, yellow: 55, green: 150, blue: 212 };
   if (color in hueCenter) {
     const dh = Math.min(Math.abs(h - hueCenter[color]!), 360 - Math.abs(h - hueCenter[color]!)) / 30;
     const lowSat = Math.max(0, 0.35 - s) / 0.1;
-    return dh + lowSat;
+    return dh + lowSat + Math.max(0, 0.3 - blob.colourFrac) / 0.1 + small;
   }
-  if (color === "black") return Math.max(0, v - 0.25) / 0.06 + Math.max(0, s - 0.4) / 0.1;
-  // silver: unsaturated and fairly bright
-  return Math.max(0, s - 0.22) / 0.06 + Math.max(0, 0.45 - v) / 0.06;
+  // Black and silver are judged by shape of the evidence, not hue. Measured
+  // on the France fixtures: the black car is a large, mostly-darker blob;
+  // the silver car is two-tone (bright body, dark wheels/shadow), whereas
+  // asphalt sheen and white markings are bright only.
+  if (color === "black") {
+    return Math.max(0, v - 0.3) / 0.06 + Math.max(0, 0.45 - blob.darkFrac) / 0.1 + Math.max(0, 900 - blob.area) / 200;
+  }
+  return Math.max(0, s - 0.22) / 0.06 + Math.max(0, 0.3 - blob.brightFrac) / 0.1 +
+    Math.max(0, 0.12 - blob.darkFrac) / 0.04 + Math.max(0, 800 - blob.area) / 200;
 }
 
 /** Optimal one-to-one assignment (DP over colour subsets; ≤ 6 colours). */
@@ -276,7 +335,7 @@ export function assign(blobs: Blob[], colors: CarColor[]): Detection[] {
       used |= 1 << pick;
     }
   }
-  return out.filter((d) => d.cost < MISSING_COST);
+  return out.filter((d) => d.cost < MAX_DETECTION_COST);
 }
 
 // --- helpers --------------------------------------------------------------
@@ -324,11 +383,11 @@ function largestComponent(cv: CV, mask: any): any {
   const labels = new cv.Mat(), stats = new cv.Mat(), centroids = new cv.Mat();
   const count = cv.connectedComponentsWithStats(mask, labels, stats, centroids, 8, cv.CV_32S);
   // The track can be split into a few pieces (e.g. by start-grid markings):
-  // keep every component at least 2% the size of the largest.
+  // keep every component at least 15% the size of the largest.
   let largest = 0;
   for (let k = 1; k < count; k++) largest = Math.max(largest, stats.data32S[k * 5 + 4]);
   const keep = new Uint8Array(count);
-  for (let k = 1; k < count; k++) keep[k] = stats.data32S[k * 5 + 4] >= largest * 0.02 ? 1 : 0;
+  for (let k = 1; k < count; k++) keep[k] = stats.data32S[k * 5 + 4] >= largest * 0.15 ? 1 : 0;
   const out = cv.Mat.zeros(mask.rows, mask.cols, cv.CV_8UC1);
   const lab = labels.data32S;
   for (let i = 0; i < lab.length; i++) if (keep[lab[i]]) out.data[i] = 255;

@@ -6,7 +6,7 @@
 // Per set, a summary image plots every photo's detections on the reference.
 // Since all photos in a set share car positions, good detection shows as
 // tight single-colour clusters.
-import { mkdir, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import sharp from "sharp";
 import { loadCv } from "../src/vision/cv";
@@ -17,7 +17,7 @@ import { loadRgb, toGray, type Rgb } from "./lib/images";
 const track = process.argv[2] ?? "france";
 const setFilter = process.argv[3];
 const REF_WIDTH = 2000;
-const OUT = join("reports", "detection", track);
+const OUT = join("reports", "detection", process.env.DETECT_OUT ?? track);
 
 export const SWATCH: Record<CarColor, string> = {
   red: "#ff2a2a", blue: "#2a7bff", green: "#22cc44", yellow: "#ffd400", black: "#000000", silver: "#c8c8c8",
@@ -26,7 +26,11 @@ export const SWATCH: Record<CarColor, string> = {
 const cv = await loadCv();
 const refRgb = await loadRgb(join("circuits", `${track}.png`), REF_WIDTH);
 const ref = prepareReference(cv, toGray(refRgb));
-const model = buildReferenceModel(cv, refRgb);
+// DETECT_REF=<png> swaps the detection reference (e.g. a composite of the
+// user's own board from tools/build-own-reference.ts). Registration still
+// uses the BGG scan; both share the same coordinates.
+const detectRef = process.env.DETECT_REF ? await loadRgb(process.env.DETECT_REF) : refRgb;
+const model = buildReferenceModel(cv, detectRef);
 await mkdir(OUT, { recursive: true });
 await saveMask(model.track, refRgb, join(OUT, "_track-mask.jpg"));
 
@@ -38,7 +42,7 @@ for (const set of (await readdir(join("fixtures", track))).sort()) {
   const all: { photo: string; result: DetectResult | null }[] = [];
   for (const file of (await readdir(dir)).filter((f) => f.endsWith(".jpg")).sort()) {
     const photo = await loadRgb(join(dir, file));
-    const reg = register(cv, ref, toGray(photo));
+    const reg = await cachedRegister(set, file, photo);
     const name = `${set}-${file.replace(".jpg", "")}`;
     if (!reg.ok) {
       all.push({ photo: name, result: null });
@@ -53,11 +57,39 @@ for (const set of (await readdir(join("fixtures", track))).sort()) {
     console.log(`${set}/${file}: ${result.blobs.length} blobs → ${result.detections.map((d) => d.color).join(", ") || "none"}`);
   }
   await summaryImage(all, join(OUT, `_${set}-summary.jpg`));
+  // Raw blob data for offline analysis (thresholds, colour priors).
+  await writeFile(
+    join(OUT, `_${set}-blobs.json`),
+    JSON.stringify(all.map((a) => ({
+      photo: a.photo,
+      blobs: a.result?.blobs.map((b) => ({
+        x: Math.round(b.x), y: Math.round(b.y), area: b.area, w: b.box[2], h: b.box[3],
+        strength: Math.round(b.strength), fill: +b.fill.toFixed(2),
+        colourFrac: +b.colourFrac.toFixed(2), darkFrac: +b.darkFrac.toFixed(2), brightFrac: +b.brightFrac.toFixed(2),
+        hsv: b.hsv.map((v) => +v.toFixed(3)),
+        color: a.result!.detections.find((d) => d.blob === b)?.color ?? null,
+      })) ?? null,
+    }))),
+  );
   sections.push(section(set, all));
 }
 
 await writeFile(join(OUT, "index.html"), page(sections.join("\n")));
 console.log(`\nwrote ${join(OUT, "index.html")}`);
+
+// Registration is slow (~4s/photo) and doesn't change while tuning detection,
+// so cache H per photo. Delete reports/cache/ after changing registration.
+async function cachedRegister(set: string, file: string, photo: Rgb) {
+  const path = join("reports", "cache", track, `${set}-${file}.json`);
+  try {
+    return JSON.parse(await readFile(path, "utf8")) as ReturnType<typeof register>;
+  } catch {
+    const reg = register(cv, ref, toGray(photo));
+    await mkdir(join("reports", "cache", track), { recursive: true });
+    await writeFile(path, JSON.stringify(reg));
+    return reg;
+  }
+}
 
 async function photoImage(r: DetectResult, path: string) {
   const svg = r.blobs
