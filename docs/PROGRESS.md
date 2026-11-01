@@ -88,7 +88,10 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - [ ] Not started. See the plan.
 
 ### Open items needing the user
-- [ ] Shoot a `pos-c` fixture set: full spaces (2 cars side by side) and cars on diamond spaces. Needed before M5.
+- [ ] **New fixtures (the user plans to shoot them on 2026-11-02):** close-up sets like `pos-b-light-a/21`, two positions per lighting; at least one full space + a car on a diamond space; a slow video sweep of the empty board (for the board-scan feature and live mode). These become the new hold-out set.
+- [ ] Decide: board-scan capture = film and auto-pick frames with a coverage map (proposed) vs manual guided photos.
+- [ ] Decide: scan with the board empty, right after choosing the track (proposed).
+- [ ] Decide: store scans + suggest a rescan on unusual noise (proposed) vs scan every game. The user's concern is lighting; the evidence says lighting is handled per frame.
 
 ## Findings & gotchas (read before touching vision code)
 - **OpenCV.js (`@techstark/opencv-js`)** only has **ORB** for features: no AKAZE/SIFT/ArUco. Load it via `loadCv()` in `src/vision/cv.ts`.
