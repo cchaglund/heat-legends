@@ -64,20 +64,23 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - [~] False positives on empty boards (15/22 photos) → own-board reference experiment
 - [x] Registration cache for fast iteration (`reports/cache/`)
 - [ ] Run all 5 sets; false-positive check on the empty sets
-- [ ] Review page → `truth.json` per set
-- [ ] `npm run test:vision` metrics vs D27; hold out `pos-b-light-b`
+- [x] Review page: `npm run review` → http://localhost:4600 (needs `npm run vision:detect -- france <set>` first for photos and consensus). Saves `fixtures/<track>/<set>/truth.json`.
+- [ ] User reviews `pos-a-light-a` and `pos-b-light-a` (`pos-b-light-b` has the same positions: copy its truth file)
+- [x] `npm run test:vision`: per-colour hit rate vs truth (or consensus) + false detections on empty sets; `DETECT_REF` selects the reference
+- [ ] Meet D27 on a fresh hold-out (the user's new close-up photos)
 - [ ] Registration speed-up (currently ~4s/photo on the laptop)
 
 ### M1b — Phone benchmark
 - [ ] `/bench.html` + Worker running the pipeline, with timings per stage
 - [ ] Run on the user's phone (+ an older one). Compare with the targets in the plan.
 
-### M2 — Rules engine
-- [ ] Track model types + synthetic test track
-- [ ] `resolveLegendMove` (all branches, D13 full spaces, 2-corner cap)
-- [ ] Deck (one card per round, reshuffle)
-- [ ] `raceOrder()`
-- [ ] Table-driven tests; the rulebook example is test #1
+### M2 — Rules engine ✅ (2026-11-01)
+- [x] `src/engine/`: types, `deriveTrack` (annotation → spaces/corners, validates D28), loop arithmetic, `syntheticAnnotation` for tests
+- [x] `resolveLegendMove` (rules A/B, 2-corner cap, D13 full spaces, D28 defence) with human-readable `reason`
+- [x] Deck state machine (`newDeck` / `nextRound` / `revealCard`, one card per round, reshuffle)
+- [x] `raceOrder()` (lap-unaware, D17)
+- [x] 52 tests; test #1 = the rulebook example with real card 4
+- Rule readings are documented in the header of `src/engine/move.ts` (e.g. ending on diamond 0 is not crossing; the 2-corner cap = aim at the second corner's diamond 0, then D13). Known nit: `spaceLabel` calls any space 0–3 before the *next* corner "diamond N", even when the explanation is about another corner.
 
 ### M3 — Annotator + France track data
 - [ ] Annotator page (boundaries, tags, raceline toggle, printed-distance check D28)

@@ -11,7 +11,9 @@
     "typecheck": "tsc --noEmit",
     "fixtures:prep": "tsx tools/prep-fixtures.ts",
     "vision:register": "tsx tools/register-report.ts",
-    "vision:detect": "tsx tools/detect-report.ts"
+    "vision:detect": "tsx tools/detect-report.ts",
+    "test:vision": "tsx tools/eval-vision.ts",
+    "review": "tsx tools/review-server.ts"
   },
   "devDependencies": {
     "@preact/preset-vite": "2.10.6",

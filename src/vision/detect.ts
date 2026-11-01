@@ -68,7 +68,8 @@ const DIFF_THRESHOLD = 45;
 const TOLERANCE_PX = 7;
 const OFFSET_WINDOW_PX = 120;
 const MIN_AREA = 120;
-const MAX_AREA = 3500;
+const MAX_AREA = 4500;
+const GROUP_PX = 11;
 const MISSING_COST = 4;
 const MAX_DETECTION_COST = 2.5;
 const COLOUR = 1, DARK = 2, BRIGHT = 3;
@@ -232,38 +233,50 @@ function matchLut(src: Float64Array, ref: Float64Array): Uint8Array {
 // --- blobs ----------------------------------------------------------------
 
 function findBlobs(cv: CV, mask: any, img: Rgb, diff: Float32Array, cls: Uint8Array): Blob[] {
+  // A car's evidence is often split (bright body, dark wheels/shadow), so
+  // group candidate pixels that lie within GROUP_PX of each other: label the
+  // dilated mask, then collect only the original mask pixels per group.
+  const grouped = morph(cv, mask, cv.MORPH_DILATE, GROUP_PX);
   const labels = new cv.Mat();
-  const stats = new cv.Mat();
-  const centroids = new cv.Mat();
-  const count = cv.connectedComponentsWithStats(mask, labels, stats, centroids, 8, cv.CV_32S);
+  const count = cv.connectedComponents(grouped, labels, 8, cv.CV_32S);
+  grouped.delete();
   const lab = labels.data32S as Int32Array;
   const pixels: number[][] = Array.from({ length: count }, () => []);
-  for (let i = 0; i < lab.length; i++) if (lab[i] > 0) pixels[lab[i]].push(i);
+  for (let i = 0; i < lab.length; i++) if (lab[i] > 0 && mask.data[i]) pixels[lab[i]].push(i);
+  labels.delete();
 
+  const width = img.width;
   const blobs: Blob[] = [];
   for (let k = 1; k < count; k++) {
-    const s = stats.data32S;
-    const area = s[k * 5 + 4];
-    if (area < MIN_AREA || area > MAX_AREA) continue;
     const all = pixels[k];
-    const frac = (c: number) => all.filter((p) => cls[p] === c).length / all.length;
+    const area = all.length;
+    if (area < MIN_AREA || area > MAX_AREA) continue;
+    let sx = 0, sy = 0, x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1;
+    for (const p of all) {
+      const x = p % width, y = (p / width) | 0;
+      sx += x; sy += y;
+      if (x < x0) x0 = x; if (x > x1) x1 = x;
+      if (y < y0) y0 = y; if (y > y1) y1 = y;
+    }
+    const frac = (c: number) => all.filter((p) => cls[p] === c).length / area;
     const colourFrac = frac(COLOUR), darkFrac = frac(DARK), brightFrac = frac(BRIGHT);
     // Colour from the colourful pixels if there are enough, else from the
     // half of the blob that differs most (drops edges/shadow).
     const colourful = all.filter((p) => cls[p] === COLOUR);
     const px = colourful.length >= 20
       ? colourful
-      : [...all].sort((p, q) => diff[q] - diff[p]).slice(0, Math.max(10, all.length >> 1));
+      : [...all].sort((p, q) => diff[q] - diff[p]).slice(0, Math.max(10, area >> 1));
     let r = 0, g = 0, b = 0, strength = 0;
     for (const p of px) { r += img.data[p * 3]; g += img.data[p * 3 + 1]; b += img.data[p * 3 + 2]; strength += diff[p]; }
     const rgb: [number, number, number] = [r / px.length, g / px.length, b / px.length];
+    const box: [number, number, number, number] = [x0, y0, x1 - x0 + 1, y1 - y0 + 1];
     blobs.push({
-      x: centroids.data64F[k * 2],
-      y: centroids.data64F[k * 2 + 1],
+      x: sx / area,
+      y: sy / area,
       area,
-      box: [s[k * 5], s[k * 5 + 1], s[k * 5 + 2], s[k * 5 + 3]],
+      box,
       strength: strength / px.length,
-      fill: area / (s[k * 5 + 2] * s[k * 5 + 3]),
+      fill: area / (box[2] * box[3]),
       colourFrac,
       darkFrac,
       brightFrac,
@@ -271,7 +284,6 @@ function findBlobs(cv: CV, mask: any, img: Rgb, diff: Float32Array, cls: Uint8Ar
       hsv: rgbToHsv(...rgb),
     });
   }
-  labels.delete(); stats.delete(); centroids.delete();
   return blobs;
 }
 
