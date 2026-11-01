@@ -29,10 +29,12 @@ Reference = per-pixel median of the 22 `empty-light-a` photos warped into refere
 
 Reading: the own-board reference **removes the print-difference false positives for coloured cars**, but the black/silver rules need re-tuning for it (merge nearby dark+bright fragments into one blob; recalibrate the dark/bright margins). **Caveat:** `pos-b-light-b` was meant to be the held-out set and has now been looked at. Pick a new hold-out (ideally new photos from another day) before final numbers.
 
-**Pending user decision (D29 candidate):** how the app gets an own-board reference: (a) a one-time "photograph your empty board" step per track, (b) built automatically during play from its own snapshots (cars masked out), starting from the BGG scan, or (c) skip it and stay with the BGG scan plus a fixed "ignore" mask for known print differences.
+**Decided (D29):** a one-time board scan per track builds the own-board reference. **Pending:** the scan UX (auto-capture while sweeping vs guided photos), the car-role UI, and new close-up fixtures (D30).
+
+Closer look at the "fixed-spot yellow" false positive (`reports/yellow-false-positive.png`): it's the grass verge right next to the track. The track mask is dilated 25px onto the verge (for car height), and the verge is pale yellow-green in the BGG scan but saturated yellow on the user's board. So it's a colour-reproduction difference, which the own-board reference removes.
 
 ### Next actions (in order)
-1. Get the user's answer on D29 (above).
+1. Get the user's answers on the scan UX, the role UI and the new fixtures (see the chat on 2026-11-01).
 2. Merge nearby blob fragments (a larger closing, or merge blobs whose boxes are within ~15px) and re-tune the black/silver margins for whichever reference wins.
 3. Build the review page → `fixtures/france/<set>/truth.json` (D24): consensus position per colour per set, the user confirms or drags it.
 4. Port the Python consensus check to `npm run test:vision` (TS): metrics vs truth, D27 bar, new hold-out set.
