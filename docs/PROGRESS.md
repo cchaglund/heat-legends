@@ -33,12 +33,30 @@ Reading: the own-board reference **removes the print-difference false positives 
 
 Closer look at the "fixed-spot yellow" false positive (`reports/yellow-false-positive.png`): it's the grass verge right next to the track. The track mask is dilated 25px onto the verge (for car height), and the verge is pale yellow-green in the BGG scan but saturated yellow on the user's board. So it's a colour-reproduction difference, which the own-board reference removes.
 
+### State on 2026-11-01 (end of session)
+Evaluated with `npm run test:vision` (consensus positions; `pos-a-light-a`, `pos-b-light-a`, FP on `empty-light-b`):
+
+| Detection reference | Coloured cars | Black | Silver | False detections / photo |
+|---|---|---|---|---|
+| BGG scan | 78–100% | 76–83% | 76–83% | 1.45 (yellow 28 at one spot) |
+| Own board, plain median | 74–100% | 0–38% | 10–57% | 1.42 |
+| **Own board, sharpness-gated median** (current) | **83–100%** | **0%** | 0–43% | **0.52** |
+
+Conclusions:
+- The own-board reference (D29) is the right direction for coloured cars and false positives.
+- **The black car barely differs from the user's real asphalt** (only ~5–25 grey levels darker). It's not separable by darkness alone. Black has no D27 bar (tap-to-correct), but silver needs ≥85%.
+- The bird's-eye fixtures give a sharp view of only 57% of the board (`tools/build-own-reference.ts` keeps only views with ≥0.8 photo px per reference px). Close-up scans will be much sharper.
+
+**Tried and reverted (don't repeat blindly):**
+- Per-photo adaptive dark/bright thresholds (median + 6·MAD): far too strict, and black/silver vanished.
+- A "new edge structure" cue (Sobel edges in the photo minus a dilated reference edge map) with the *blurry* reference: everything looked like a new edge. It might work with a sharp reference; untested.
+
 ### Next actions (in order)
-1. Get the user's answers on the scan UX, the role UI and the new fixtures (see the chat on 2026-11-01).
-2. Merge nearby blob fragments (a larger closing, or merge blobs whose boxes are within ~15px) and re-tune the black/silver margins for whichever reference wins.
-3. Build the review page → `fixtures/france/<set>/truth.json` (D24): consensus position per colour per set, the user confirms or drags it.
-4. Port the Python consensus check to `npm run test:vision` (TS): metrics vs truth, D27 bar, new hold-out set.
-5. → M1b phone benchmark. Detection is also slow (~2–3s/photo in Node at 2000px) and needs the same diet as registration.
+1. **Wait for the user's new fixtures** (close-ups, a full space, a car on a diamond, and a video sweep of the empty board; promised for 2026-11-02). Prep them with `npm run fixtures:prep` (extend it to extract frames from the video, e.g. 2 fps).
+2. Build the own-board reference from the **video sweep**, with the sharpness gating → expect a sharp reference over most of the track. Then re-tune black/silver against it (try the edge cue again). The current fixed thresholds are in `src/vision/detect.ts` (the `cls[i] = …` lines).
+3. The user reviews positions with `npm run review` (run `npm run vision:detect -- france <set>` first). Then `test:vision` scores against confirmed truth instead of consensus.
+4. Close-up sets are the new hold-out. Report the D27 numbers on them.
+5. → M1b phone benchmark. Registration ~4s/photo and detection ~2–3s/photo in Node: both need slimming down.
 
 Analysis helpers: `npm run vision:detect` writes `_<set>-blobs.json` (every blob with features and the assigned colour) next to the report.
 
@@ -109,6 +127,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - `fixtures-raw/` holds the original photos **with GPS EXIF**. It's git-ignored; never commit it. `reports/` is git-ignored too: regenerate it.
 
 ## Session log
+- **2026-11-01**: M2 rules engine (subagent, 52 tests); review page; `test:vision`; blob grouping; own-board reference experiments (plain median, then sharpness-gated); adaptive thresholds and the edge cue tried and reverted. Awaiting close-up fixtures + a video sweep from the user.
 - **2026-10-29**: Design Q&A with the user → docs 01–07, decisions D1–D28, card data.
 - **2026-10-30**: M0 scaffold; repo created and pushed; Pages deploy working; fixtures prepared; registration 127/128; detection pipeline first version (clusters visible on `pos-a`, too noisy).
 - **2026-10-31**: Added CLAUDE.md + this file for handoff. Detection: candidate classes, chroma-based track mask, two-tone silver / large-dark black → coloured cars ~90–100%, black/silver ~70–90% (consensus proxy). Started the own-board reference experiment.
