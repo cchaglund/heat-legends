@@ -29,7 +29,7 @@ Reference = per-pixel median of the 22 `empty-light-a` photos warped into refere
 
 Reading: the own-board reference **removes the print-difference false positives for coloured cars**, but the black/silver rules need re-tuning for it (merge nearby dark+bright fragments into one blob; recalibrate the dark/bright margins). **Caveat:** `pos-b-light-b` was meant to be the held-out set and has now been looked at. Pick a new hold-out (ideally new photos from another day) before final numbers.
 
-**Decided (D29):** a one-time board scan per track builds the own-board reference. **Pending:** the scan UX (auto-capture while sweeping vs guided photos), the car-role UI, and new close-up fixtures (D30).
+**Decided (D29):** a one-time board scan per track builds the own-board reference. Scan UX decided in D32–D34, role UI in D31.
 
 Closer look at the "fixed-spot yellow" false positive (`reports/yellow-false-positive.png`): it's the grass verge right next to the track. The track mask is dilated 25px onto the verge (for car height), and the verge is pale yellow-green in the BGG scan but saturated yellow on the user's board. So it's a colour-reproduction difference, which the own-board reference removes.
 
@@ -63,7 +63,7 @@ Findings:
 1. Quality gate: a blur metric (Laplacian variance) per frame, threshold from the fixtures. Rejected frames don't count as false positives; the app asks to hold steady.
 2. Pull M3's annotation forward far enough to get space positions for France, then test "blob must be on a space" against the black/silver false positives (see above). This is probably the big lever, not more pixel rules.
 3. Optional black/silver pixel work: why the silver assignment still picks a wrong bright blob in 8/13 close-ups (regenerate blobs with `DETECT_REF=reports/ref/france-scan-light-d.png npm run vision:detect -- france closeup-light-d` and compare costs).
-4. Board-scan design questions are still open with the user: capture method (film + auto-pick + coverage map, proposed) and timing (empty board right after choosing the track, proposed).
+4. Board scan is decided (D32–D34); build it in M4/M5 using `tools/build-own-reference.ts` as the algorithm.
 5. → M1b phone benchmark.
 
 Analysis helpers: `npm run vision:detect` writes `_<set>-blobs.json` (every blob with features and the assigned colour) next to the report.
@@ -119,9 +119,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 ### Open items needing the user
 - [x] New fixtures delivered 2026-11-02: `closeup-light-c/d` (c = lamp off, d = lamp on), `scan-light-c/d` (video frames). See 05-development-and-testing.md.
 - [x] User reviewed the close-ups (2026-11-02). The review page now saves left-in-place guesses as confirmed (earlier saves were backfilled from the guesses shown).
-- [ ] Decide: board-scan capture = film and auto-pick frames with a coverage map (proposed) vs manual guided photos.
-- [ ] Decide: scan with the board empty, right after choosing the track (proposed).
-- [ ] Decide: store scans + suggest a rescan on unusual noise (proposed) vs scan every game. The user's concern is lighting; the evidence says lighting is handled per frame.
+- [x] Decided D32: board scan = film, auto-pick sharp frames, coverage map.
+- [x] Decided D33: scan the empty board right after choosing the track.
+- [x] Decided D34: store scans, suggest a rescan on unusual noise.
 
 ## Findings & gotchas (read before touching vision code)
 - **OpenCV.js (`@techstark/opencv-js`)** only has **ORB** for features: no AKAZE/SIFT/ArUco. Load it via `loadCv()` in `src/vision/cv.ts`.
@@ -137,6 +137,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - `fixtures-raw/` holds the original photos **with GPS EXIF**. It's git-ignored; never commit it. `reports/` is git-ignored too: regenerate it.
 
 ## Session log
+- **2026-11-02 (c)**: User agreed D32–D34 (scan by filming, empty board after track choice, store + suggest rescan).
 - **2026-11-02 (b)**: User confirmed close-up positions; review save bug fixed + backfilled; real-position scoring exposed black/silver; paint-centred blobs (yellow 10/10); all-bright silver rule (5/13, more FPs). Next: blur gate, on-space prior.
 - **2026-11-02**: Close-up + video fixtures; prep keeps names and extracts video frames; per-photo review mode; close-up scoring; references built from video; blob hue-splitting (full spaces); black/silver size penalty. Coloured cars 45/45 on close-ups (names-only).
 - **2026-11-01**: M2 rules engine (subagent, 52 tests); review page; `test:vision`; blob grouping; own-board reference experiments (plain median, then sharpness-gated); adaptive thresholds and the edge cue tried and reverted. Awaiting close-up fixtures + a video sweep from the user.
