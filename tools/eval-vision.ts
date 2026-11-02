@@ -8,8 +8,11 @@
 // ({ status, positions: { colour: [x, y] } } in reference px). Without a
 // truth file the per-colour consensus (median detection) is used and the
 // row is marked "consensus". A detection counts as correct within
-// MATCH_PX of the true position. Empty sets ("empty-*") count false
-// detections. Registration comes from the vision:detect cache when present.
+// MATCH_PX of the true position. Empty sets ("empty-*", and "scan-*" video
+// frames of the empty board) count false detections.
+// Close-up sets ("closeup-*") are scored per photo, only for the cars named
+// in the file name (red-silver-2.jpg → red, silver): against truth.json
+// "photos" when reviewed, else "names-only" = the colour was detected at all. Registration comes from the vision:detect cache when present.
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { loadCv } from "../src/vision/cv";
@@ -22,6 +25,7 @@ const REF_WIDTH = 2000;
 const MATCH_PX = 40;
 
 type Truth = { status: string; positions: Partial<Record<CarColor, [number, number]>> };
+type PhotoTruth = { status: string; photos: Record<string, Partial<Record<CarColor, [number, number] | null>>> };
 
 const cv = await loadCv();
 const refRgb = await loadRgb(join("circuits", `${track}.png`), REF_WIDTH);
@@ -35,16 +39,44 @@ for (const set of (await readdir(join("fixtures", track))).sort()) {
   if (filters.length && !filters.some((f) => set.includes(f))) continue;
   const dir = join("fixtures", track, set);
   const perPhoto: Detection[][] = [];
+  const names: string[] = [];
+  let failed = 0;
   for (const file of (await readdir(dir)).filter((f) => f.endsWith(".jpg")).sort()) {
     const photo = await loadRgb(join(dir, file));
     const reg = await cachedRegister(set, file, photo);
+    if (!reg.ok) failed++;
     perPhoto.push(reg.ok ? detectCars(cv, model, photo, reg.H!, CAR_COLORS).detections : []);
+    names.push(file.replace(/\.jpg$/, ""));
+  }
+  const regNote = failed ? `   (${failed} registration failures)` : "";
+
+  if (set.startsWith("closeup")) {
+    const truth = (await loadTruth(dir)) as unknown as PhotoTruth | null;
+    const hits: Record<string, [number, number]> = {};
+    let reviewed = 0;
+    names.forEach((name, k) => {
+      const t = truth?.photos?.[name];
+      if (t) reviewed++;
+      for (const c of name.split("-").filter((x): x is CarColor => (CAR_COLORS as string[]).includes(x))) {
+        if (t && t[c] === null) continue; // marked absent by the reviewer
+        const ds = perPhoto[k].filter((d) => d.color === c);
+        const p = t?.[c];
+        const ok = p ? ds.some((d) => Math.hypot(d.blob.x - p[0], d.blob.y - p[1]) < MATCH_PX) : ds.length > 0;
+        hits[c] ??= [0, 0];
+        hits[c][0] += ok ? 1 : 0;
+        hits[c][1]++;
+      }
+    });
+    const mode = reviewed === names.length ? "confirmed" : reviewed ? `partial ${reviewed}/${names.length}` : "names-only";
+    const cells = CAR_COLORS.filter((c) => hits[c]).map((c) => `${c} ${hits[c][0]}/${hits[c][1]}`);
+    rows.push(`${set.padEnd(16)} ${perPhoto.length} photos   ${mode.padEnd(9)}   ${cells.join("  ")}${regNote}`);
+    continue;
   }
 
-  if (set.startsWith("empty")) {
+  if (/^(empty|scan)/.test(set)) {
     const n = perPhoto.flat().length;
     const byColour = CAR_COLORS.map((c) => `${c} ${perPhoto.flat().filter((d) => d.color === c).length}`).join(", ");
-    rows.push(`${set.padEnd(16)} ${perPhoto.length} photos   false detections ${n} (${(n / perPhoto.length).toFixed(2)}/photo; target ≤ 0.05)   ${byColour}`);
+    rows.push(`${set.padEnd(16)} ${perPhoto.length} photos${regNote}   false detections ${n} (${(n / perPhoto.length).toFixed(2)}/photo; target ≤ 0.05)   ${byColour}`);
     continue;
   }
 
