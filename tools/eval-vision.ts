@@ -15,8 +15,10 @@
 // "photos" when reviewed, else "names-only" = the colour was detected at all. Registration comes from the vision:detect cache when present.
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { deriveTrack } from "../src/engine/track";
+import type { Point } from "../src/engine/types";
 import { loadCv } from "../src/vision/cv";
-import { CAR_COLORS, buildReferenceModel, detectCars, type CarColor, type Detection } from "../src/vision/detect";
+import { CAR_COLORS, buildReferenceModel, detectCars, type Blob, type CarColor, type Detection } from "../src/vision/detect";
 import { prepareReference, register, type Registration } from "../src/vision/registration";
 import { loadRgb, toGray, type Rgb } from "./lib/images";
 
@@ -34,20 +36,34 @@ const detectRef = process.env.DETECT_REF ? await loadRgb(process.env.DETECT_REF)
 const model = buildReferenceModel(cv, detectRef);
 console.log(`detection reference: ${process.env.DETECT_REF ?? "BGG scan"}\n`);
 
+// SPACES=<margin px>: only blobs whose centre is on a space of tracks/<track>.json.
+let accept: ((b: { x: number; y: number }) => boolean) | undefined;
+if (process.env.SPACES !== undefined) {
+  const t = deriveTrack(JSON.parse(await readFile(join("tracks", `${track}.json`), "utf8")));
+  const margin = Number(process.env.SPACES) || 0;
+  accept = (b) => t.spaces.some((s) => insideQuad(s.quad, b.x, b.y, margin));
+  console.log(`on-space filter: ${t.spaces.length} spaces, margin ${margin}px`);
+}
+
 const rows: string[] = [];
 const sharpLog: string[] = [];
+const fpLog: string[] = [];
 for (const set of (await readdir(join("fixtures", track))).sort()) {
   if (filters.length && !filters.some((f) => set.includes(f))) continue;
   const dir = join("fixtures", track, set);
   const perPhoto: Detection[][] = [];
+  const perBlobs: Blob[][] = [];
   const names: string[] = [];
   let failed = 0;
   for (const file of (await readdir(dir)).filter((f) => f.endsWith(".jpg")).sort()) {
     const photo = await loadRgb(join(dir, file));
     const reg = await cachedRegister(set, file, photo);
     if (!reg.ok) failed++;
-    const res = reg.ok ? detectCars(cv, model, photo, reg.H!, CAR_COLORS) : null;
+    const res = reg.ok ? detectCars(cv, model, photo, reg.H!, CAR_COLORS, accept) : null;
     perPhoto.push(res?.detections ?? []);
+    perBlobs.push(res?.blobs ?? []);
+    if (process.env.FP_LOG && /^(empty|scan)/.test(set)) for (const d of res?.detections ?? [])
+      fpLog.push(`${set}/${file}\t${d.color}\t${Math.round(d.blob.x)}\t${Math.round(d.blob.y)}\t${d.blob.area}\t${d.blob.box[2]}x${d.blob.box[3]}\t${d.blob.brightFrac.toFixed(2)}\t${d.blob.darkFrac.toFixed(2)}\t${d.cost.toFixed(2)}\t${d.blob.edge.toFixed(2)}`);
     if (process.env.SHARPNESS_LOG) sharpLog.push(`${set}/${file}\t${res?.sharpness.toFixed(3) ?? "-"}\t${res?.detections.map((d) => d.color).join(",") ?? ""}`);
     names.push(file.replace(/\.jpg$/, ""));
   }
@@ -64,6 +80,8 @@ for (const set of (await readdir(join("fixtures", track))).sort()) {
         if (t && t[c] === null) continue; // marked absent by the reviewer
         const ds = perPhoto[k].filter((d) => d.color === c);
         const p = t?.[c];
+        if (process.env.FP_LOG && p) for (const b of perBlobs[k].filter((b) => Math.hypot(b.x - p[0], b.y - p[1]) < MATCH_PX))
+          fpLog.push(`TRUE ${c}\t${set}/${name}\t${b.area}\t${b.box[2]}x${b.box[3]}\t${b.brightFrac.toFixed(2)}\t${b.darkFrac.toFixed(2)}\t${b.edge.toFixed(2)}\t${ds.some((d) => d.blob === b) ? "assigned" : "-"}`);
         const ok = p ? ds.some((d) => Math.hypot(d.blob.x - p[0], d.blob.y - p[1]) < MATCH_PX) : ds.length > 0;
         hits[c] ??= [0, 0];
         hits[c][0] += ok ? 1 : 0;
@@ -93,6 +111,7 @@ for (const set of (await readdir(join("fixtures", track))).sort()) {
   rows.push(`${set.padEnd(16)} ${perPhoto.length} photos   ${truth.status.padEnd(9)}   ${cells.join("  ")}`);
 }
 console.log(rows.join("\n"));
+if (process.env.FP_LOG) await writeFile(process.env.FP_LOG, fpLog.join("\n") + "\n");
 if (process.env.SHARPNESS_LOG) await writeFile(process.env.SHARPNESS_LOG, sharpLog.join("\n") + "\n");
 
 async function loadTruth(dir: string): Promise<Truth | null> {
@@ -124,4 +143,15 @@ async function cachedRegister(set: string, file: string, photo: Rgb): Promise<Re
     await writeFile(path, JSON.stringify(reg));
     return reg;
   }
+}
+
+/** Point inside a convex quad (either winding), or within `margin` px of its edges. */
+function insideQuad(q: Point[], x: number, y: number, margin: number): boolean {
+  const cross = q.map((p, i) => { const r = q[(i + 1) % q.length]; return (r.x - p.x) * (y - p.y) - (r.y - p.y) * (x - p.x); });
+  if (cross.every((c) => c >= 0) || cross.every((c) => c <= 0)) return true;
+  return q.some((p, i) => {
+    const r = q[(i + 1) % q.length], ex = r.x - p.x, ey = r.y - p.y;
+    const t = Math.max(0, Math.min(1, ((x - p.x) * ex + (y - p.y) * ey) / (ex * ex + ey * ey)));
+    return Math.hypot(x - p.x - t * ex, y - p.y - t * ey) <= margin;
+  });
 }

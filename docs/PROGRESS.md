@@ -59,11 +59,17 @@ Findings:
 
 **Quality gate (2026-11-02):** `src/vision/quality.ts`. The plain Laplacian variance (`sharpness`) depends on the scene, so it doesn't separate blurry from sharp. `relativeSharpness` (detail of the warped frame ÷ detail of the reference, on the visible track) is returned by `detectCars` as `sharpness`. Measured (`SHARPNESS_LOG=<file> npm run test:vision`): close-ups 1.9–8.9; still photos 0.66–3.5; the visibly motion-blurred video frames ~0.5–0.8 (scan-light-c/14 0.50, scan-light-d/12 0.81). **Blur does not explain the black/silver false positives:** they're spread across all sharpness levels (rejecting <0.5 changes 1.11 → 1.09/photo). The gate is for the UX ("hold steady"); a threshold of ~0.6 is a starting point. Values above 1 are normal: a single photo has more noise than the median reference.
 
-**Likely way forward for black/silver: stop tuning pixels and use the track.** A car can only stand on a space. Once M3 annotates the spaces, a blob counts only when it sits on a space, and only one car fits per spot. Most black/silver false blobs (verges, markings, glare streaks) are not on a space centre. Measure this on the fixtures as soon as `tracks/france.json` exists.
+**On-space filter + silver edge cue (2026-11-02, with the confirmed `tracks/france.json`):** `SPACES=0 DETECT_REF=reports/ref/france-scan-light-d.png npm run test:vision`
+- "Blob centre must be inside a space" (`detectCars(..., accept)`; eval: `SPACES=<margin px>`): black false positives 47 → 13 on the empty sets, no recall loss. A 10px margin brings most of them back (they sit just off the asphalt). Silver false positives unchanged: they're **glare on the asphalt**, all-bright and car-sized (`FP_LOG=<file>` logs them).
+- New blob feature `edge` = frame gradient beyond the reference's local max gradient. Real silver blobs 34–82, glare mostly 2.5–30 → silver cost penalty below `SILVER_MIN_EDGE` 30.
+- Result: close-up silver 5/13 → **10/13**; false detections empty-light-a 1.26 → 0.65/photo, empty-light-b 1.65 → 0.71, scan-light-c 0.96 → 0.30, scan-light-d 0.29 → 0.10. Coloured cars unchanged. Black close-ups still 1/5.
+- Caveat: `edge` grows with photo sharpness (close-ups are sharper than the empty sets). If silver misses on far shots, scale the threshold by `relativeSharpness`.
+
+**Earlier idea, now partly done:** stop tuning pixels and use the track.** A car can only stand on a space. Once M3 annotates the spaces, a blob counts only when it sits on a space, and only one car fits per spot. Most black/silver false blobs (verges, markings, glare streaks) are not on a space centre. Measure this on the fixtures as soon as `tracks/france.json` exists.
 
 ### Next actions (in order)
-1. **The user checks the France annotation:** `npm run annotate` → http://localhost:4610 (the draft comes from `npx tsx tools/find-boundaries.ts france` → `reports/boundaries/france.json`, pre-filled with speeds 5/2/4/3 and the raceline on the right until the speed-4 corner). Open: corner #47's speed limit (rotated sign), the raceline sides after corner 4, laps. Save → `tracks/france.json` (validated by `deriveTrack`).
-2. Then test "blob must be on a space" against the black/silver false positives (see above). This is probably the big lever, not more pixel rules.
+1. ~~The user checks the France annotation~~ done. `npm run annotate` → http://localhost:4610 (the draft comes from `npx tsx tools/find-boundaries.ts france` → `reports/boundaries/france.json`, pre-filled with speeds 5/2/4/3 and the raceline on the right until the speed-4 corner). Open: corner #47's speed limit (rotated sign), the raceline sides after corner 4, laps. Save → `tracks/france.json` (validated by `deriveTrack`).
+2. Remaining false positives (~0.1–0.7/photo vs the D27 bar 0.05): look at the survivors with `FP_LOG`. Candidates: glare moves with the camera while a car doesn't, so the hybrid live mode (D15) can require a silver/black detection to stay put across frames; black needs its own cue (black close-ups 1/5).
 3. Optional black/silver pixel work: why the silver assignment still picks a wrong bright blob in 8/13 close-ups (regenerate blobs with `DETECT_REF=reports/ref/france-scan-light-d.png npm run vision:detect -- france closeup-light-d` and compare costs).
 4. Board scan is decided (D32–D34); build it in M4/M5 using `tools/build-own-reference.ts` as the algorithm.
 5. → M1b phone benchmark. Pick the quality-gate threshold there (see the quality gate findings).
@@ -113,7 +119,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 ### M3 — Annotator + France track data
 - [x] Automatic draft: `tools/find-boundaries.ts` finds all 60 France boundaries, the finish (checker band), 4/5 corners (thick lines), all 5 Legends Lines (tan), and the race order (cut the road into spaces, walk from the finish away from the grid). The raceline side can't be read from the print (both edges carry white bands): the annotator sets it.
 - [x] Annotator page `npm run annotate` (tags, speed, raceline flip, drag/add/delete lines, distance-to-corner overlay for D28, save validated by `deriveTrack`)
-- [ ] User confirms the France annotation
+- [x] User confirmed the France annotation (`tracks/france.json`, 2026-11-02; corner #47 = speed 4; raceline right 0–26, left 27–38, right 39–59)
 - [ ] `tracks/france.json`
 - [ ] Convert `truth.json` pixel positions → spaces
 
@@ -141,6 +147,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - `fixtures-raw/` holds the original photos **with GPS EXIF**. It's git-ignored; never commit it. `reports/` is git-ignored too: regenerate it.
 
 ## Session log
+- **2026-11-02 (f)**: User confirmed tracks/france.json; on-space filter (black FPs −70%); silver edge cue (silver 10/13, FPs roughly halved).
 - **2026-11-02 (e)**: M3 started: automatic boundary draft for France (60 spaces, matches the printed distances) + annotator page.
 - **2026-11-02 (d)**: Quality gate metric (relative sharpness); blur is not the cause of black/silver false positives.
 - **2026-11-02 (c)**: User agreed D32–D34 (scan by filming, empty board after track choice, store + suggest rescan).

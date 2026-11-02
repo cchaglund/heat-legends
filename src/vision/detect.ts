@@ -34,6 +34,8 @@ export type Blob = {
   brightFrac: number;
   rgb: [number, number, number]; // mean normalized colour of the blob's strongest pixels
   hsv: [number, number, number]; // h 0–360, s 0–1, v 0–1
+  /** Mean edge strength the frame has beyond the reference's (car outline vs smooth glare). */
+  edge: number;
 };
 
 export type Detection = { color: CarColor; blob: Blob; cost: number };
@@ -74,6 +76,7 @@ const MIN_AREA = 120;
 const MAX_AREA = 4500;
 const GROUP_PX = 11;
 const MAX_SIDE = 170;
+const SILVER_MIN_EDGE = 30;
 const MISSING_COST = 4;
 const MAX_DETECTION_COST = 2.5;
 const COLOUR = 1, DARK = 2, BRIGHT = 3;
@@ -133,6 +136,8 @@ export function detectCars(
   frame: Rgb,
   H: H3,
   colors: CarColor[],
+  /** Keep only plausible blobs, e.g. those standing on a track space (M3). */
+  accept: (b: Blob) => boolean = () => true,
 ): DetectResult {
   const { width, height } = model.rgb;
   const n = width * height;
@@ -166,12 +171,35 @@ export function detectCars(
   const cleaned = morph(cv, morph(cv, maskMat, cv.MORPH_OPEN, 3, true), cv.MORPH_CLOSE, 9, true);
   const mask = new Uint8Array(cleaned.data);
 
-  const blobs = findBlobs(cv, cleaned, normalized, diff, cls);
+  const blobs = findBlobs(cv, cleaned, normalized, diff, cls, edgeExcess(cv, model, normalized));
   cleaned.delete();
 
   const onTrack = valid.map((v, i) => v && model.track[i] ? 1 : 0);
   const sharpness = relativeSharpness(model.rgb, normalized, onTrack);
-  return { blobs, detections: assign(blobs, colors), normalized, mask, diff, sharpness };
+  return { blobs, detections: assign(blobs.filter(accept), colors), normalized, mask, diff, sharpness };
+}
+
+/**
+ * Per pixel: gradient magnitude of the frame minus the reference's local max
+ * gradient (7px window, for registration error), floored at 0. Printed
+ * lines cancel out; a car's outline and wheels remain, smooth glare doesn't.
+ */
+function edgeExcess(cv: CV, model: ReferenceModel, frame: Rgb): Float32Array {
+  const grad = (img: Rgb) => {
+    const { width: w, height: h, data } = img;
+    const g = new Float32Array(w * h), out = cv.Mat.zeros(h, w, cv.CV_32F);
+    for (let i = 0, j = 0; i < g.length; i++, j += 3) g[i] = (data[j] * 77 + data[j + 1] * 150 + data[j + 2] * 29) / 256;
+    for (let y = 1; y < h - 1; y++) for (let x = 1, i = y * w + 1; x < w - 1; x++, i++)
+      out.data32F[i] = Math.abs(g[i + 1] - g[i - 1]) + Math.abs(g[i + w] - g[i - w]);
+    return out;
+  };
+  const f = grad(frame), r = grad(model.rgb), rMax = new cv.Mat();
+  const k = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(7, 7));
+  cv.dilate(r, rMax, k);
+  const out = new Float32Array(f.data32F.length);
+  for (let i = 0; i < out.length; i++) out[i] = Math.max(0, f.data32F[i] - rMax.data32F[i]);
+  [f, r, rMax, k].forEach((m) => m.delete());
+  return out;
 }
 
 // --- lighting -------------------------------------------------------------
@@ -240,7 +268,7 @@ function matchLut(src: Float64Array, ref: Float64Array): Uint8Array {
 
 // --- blobs ----------------------------------------------------------------
 
-function findBlobs(cv: CV, mask: any, img: Rgb, diff: Float32Array, cls: Uint8Array): Blob[] {
+function findBlobs(cv: CV, mask: any, img: Rgb, diff: Float32Array, cls: Uint8Array, edge: Float32Array): Blob[] {
   // A car's evidence is often split (bright body, dark wheels/shadow), so
   // group candidate pixels that lie within GROUP_PX of each other: label the
   // dilated mask, then collect only the original mask pixels per group.
@@ -258,7 +286,7 @@ function findBlobs(cv: CV, mask: any, img: Rgb, diff: Float32Array, cls: Uint8Ar
     if (pixels[k].length < MIN_AREA || pixels[k].length > MAX_AREA * 2) continue;
     for (const part of splitByHue(pixels[k], img, cls)) {
       if (part.length < MIN_AREA || part.length > MAX_AREA) continue;
-      blobs.push(makeBlob(part, img, diff, cls));
+      blobs.push(makeBlob(part, img, diff, cls, edge));
     }
   }
   return blobs;
@@ -310,7 +338,7 @@ function splitByHue(all: number[], img: Rgb, cls: Uint8Array): number[][] {
   return [a, b];
 }
 
-function makeBlob(all: number[], img: Rgb, diff: Float32Array, cls: Uint8Array): Blob {
+function makeBlob(all: number[], img: Rgb, diff: Float32Array, cls: Uint8Array, edge: Float32Array): Blob {
   const width = img.width;
   const area = all.length;
   let sx = 0, sy = 0, x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1;
@@ -349,6 +377,7 @@ function makeBlob(all: number[], img: Rgb, diff: Float32Array, cls: Uint8Array):
     brightFrac: frac(BRIGHT),
     rgb,
     hsv: rgbToHsv(...rgb),
+    edge: all.reduce((t, p) => t + edge[p], 0) / area,
   };
 }
 
@@ -381,7 +410,10 @@ export function colorCost(blob: Blob, color: CarColor): number {
   const twoTone = Math.max(0, 0.12 - blob.darkFrac) / 0.04 + Math.max(0, 800 - blob.area) / 200;
   const allBright = Math.max(0, 0.75 - blob.brightFrac) / 0.05 + Math.max(0, 450 - blob.area) / 100 +
     Math.max(0, blob.area - 1100) / 200;
-  return tooLong + Math.max(0, s - 0.22) / 0.06 + Math.max(0, 0.3 - blob.brightFrac) / 0.1 + Math.min(twoTone, allBright);
+  // Glare is bright too, but smooth: the car adds outline/wheel edges the
+  // reference doesn't have (real silver blobs ≥ ~34, glare mostly < 30).
+  const smooth = Math.max(0, SILVER_MIN_EDGE - blob.edge) / 5;
+  return tooLong + Math.max(0, s - 0.22) / 0.06 + Math.max(0, 0.3 - blob.brightFrac) / 0.1 + Math.min(twoTone, allBright) + smooth;
 }
 
 /** Optimal one-to-one assignment (DP over colour subsets; ≤ 6 colours). */
