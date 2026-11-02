@@ -62,10 +62,11 @@ Findings:
 **Likely way forward for black/silver: stop tuning pixels and use the track.** A car can only stand on a space. Once M3 annotates the spaces, a blob counts only when it sits on a space, and only one car fits per spot. Most black/silver false blobs (verges, markings, glare streaks) are not on a space centre. Measure this on the fixtures as soon as `tracks/france.json` exists.
 
 ### Next actions (in order)
-1. Pull M3's annotation forward far enough to get space positions for France, then test "blob must be on a space" against the black/silver false positives (see above). This is probably the big lever, not more pixel rules.
-2. Optional black/silver pixel work: why the silver assignment still picks a wrong bright blob in 8/13 close-ups (regenerate blobs with `DETECT_REF=reports/ref/france-scan-light-d.png npm run vision:detect -- france closeup-light-d` and compare costs).
-3. Board scan is decided (D32–D34); build it in M4/M5 using `tools/build-own-reference.ts` as the algorithm.
-4. → M1b phone benchmark. Pick the quality-gate threshold there (see the quality gate findings).
+1. **The user checks the France annotation:** `npm run annotate` → http://localhost:4610 (the draft comes from `npx tsx tools/find-boundaries.ts france` → `reports/boundaries/france.json`, pre-filled with speeds 5/2/4/3 and the raceline on the right until the speed-4 corner). Open: corner #47's speed limit (rotated sign), the raceline sides after corner 4, laps. Save → `tracks/france.json` (validated by `deriveTrack`).
+2. Then test "blob must be on a space" against the black/silver false positives (see above). This is probably the big lever, not more pixel rules.
+3. Optional black/silver pixel work: why the silver assignment still picks a wrong bright blob in 8/13 close-ups (regenerate blobs with `DETECT_REF=reports/ref/france-scan-light-d.png npm run vision:detect -- france closeup-light-d` and compare costs).
+4. Board scan is decided (D32–D34); build it in M4/M5 using `tools/build-own-reference.ts` as the algorithm.
+5. → M1b phone benchmark. Pick the quality-gate threshold there (see the quality gate findings).
 
 Analysis helpers: `npm run vision:detect` writes `_<set>-blobs.json` (every blob with features and the assigned colour) next to the report.
 
@@ -110,7 +111,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - Rule readings are documented in the header of `src/engine/move.ts` (e.g. ending on diamond 0 is not crossing; the 2-corner cap = aim at the second corner's diamond 0, then D13). Known nit: `spaceLabel` calls any space 0–3 before the *next* corner "diamond N", even when the explanation is about another corner.
 
 ### M3 — Annotator + France track data
-- [ ] Annotator page (boundaries, tags, raceline toggle, printed-distance check D28)
+- [x] Automatic draft: `tools/find-boundaries.ts` finds all 60 France boundaries, the finish (checker band), 4/5 corners (thick lines), all 5 Legends Lines (tan), and the race order (cut the road into spaces, walk from the finish away from the grid). The raceline side can't be read from the print (both edges carry white bands): the annotator sets it.
+- [x] Annotator page `npm run annotate` (tags, speed, raceline flip, drag/add/delete lines, distance-to-corner overlay for D28, save validated by `deriveTrack`)
+- [ ] User confirms the France annotation
 - [ ] `tracks/france.json`
 - [ ] Convert `truth.json` pixel positions → spaces
 
@@ -138,6 +141,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - `fixtures-raw/` holds the original photos **with GPS EXIF**. It's git-ignored; never commit it. `reports/` is git-ignored too: regenerate it.
 
 ## Session log
+- **2026-11-02 (e)**: M3 started: automatic boundary draft for France (60 spaces, matches the printed distances) + annotator page.
 - **2026-11-02 (d)**: Quality gate metric (relative sharpness); blur is not the cause of black/silver false positives.
 - **2026-11-02 (c)**: User agreed D32–D34 (scan by filming, empty board after track choice, store + suggest rescan).
 - **2026-11-02 (b)**: User confirmed close-up positions; review save bug fixed + backfilled; real-position scoring exposed black/silver; paint-centred blobs (yellow 10/10); all-bright silver rule (5/13, more FPs). Next: blur gate, on-space prior.
