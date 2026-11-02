@@ -33,30 +33,29 @@ Reading: the own-board reference **removes the print-difference false positives 
 
 Closer look at the "fixed-spot yellow" false positive (`reports/yellow-false-positive.png`): it's the grass verge right next to the track. The track mask is dilated 25px onto the verge (for car height), and the verge is pale yellow-green in the BGG scan but saturated yellow on the user's board. So it's a colour-reproduction difference, which the own-board reference removes.
 
-### State on 2026-11-01 (end of session)
-Evaluated with `npm run test:vision` (consensus positions; `pos-a-light-a`, `pos-b-light-a`, FP on `empty-light-b`):
+### State on 2026-11-02
+New fixtures (close-ups + video scans, see 05-development-and-testing.md). The detection reference is now built from a **video sweep** (`npx tsx tools/build-own-reference.ts france scan-light-d` → `reports/ref/france-scan-light-d.png`): 91–92% of the board has ≥3 sharp views (vs 57% from the bird's-eye photos).
 
-| Detection reference | Coloured cars | Black | Silver | False detections / photo |
-|---|---|---|---|---|
-| BGG scan | 78–100% | 76–83% | 76–83% | 1.45 (yellow 28 at one spot) |
-| Own board, plain median | 74–100% | 0–38% | 10–57% | 1.42 |
-| **Own board, sharpness-gated median** (current) | **83–100%** | **0%** | 0–43% | **0.52** |
+`DETECT_REF=reports/ref/france-scan-light-d.png npm run test:vision -- france closeup-light-c closeup-light-d empty-light-b scan-light-c scan-light-d`:
 
-Conclusions:
-- The own-board reference (D29) is the right direction for coloured cars and false positives.
-- **The black car barely differs from the user's real asphalt** (only ~5–25 grey levels darker). It's not separable by darkness alone. Black has no D27 bar (tap-to-correct), but silver needs ≥85%.
-- The bird's-eye fixtures give a sharp view of only 57% of the board (`tools/build-own-reference.ts` keeps only views with ≥0.8 photo px per reference px). Close-up scans will be much sharper.
+| | red | blue | green | yellow | black | silver |
+|---|---|---|---|---|---|---|
+| Close-ups, named cars detected (**names-only**, positions not yet verified) | 13/13 | 17/17 | 10/10 | 10/10 | 3/5 | 5/13 |
 
-**Tried and reverted (don't repeat blindly):**
-- Per-photo adaptive dark/bright thresholds (median + 6·MAD): far too strict, and black/silver vanished.
-- A "new edge structure" cue (Sobel edges in the photo minus a dilated reference edge map) with the *blurry* reference: everything looked like a new edge. It might work with a sharp reference; untested.
+False detections: scan-light-d 0.24/photo, scan-light-c 0.61, empty-light-b 1.19. **All of them are black/silver**; coloured false positives ≈ 0.
+
+Findings today:
+- **Cross-lighting works:** a reference scanned with the lamp on, used on lamp-off close-ups (and the reverse), detects the coloured cars perfectly. Storing the scan is fine (the user's concern was lighting).
+- **Full spaces:** two cars side by side merged into one blob → `splitByHue` in `detect.ts` splits a group whose colourful pixels form two car hues (green 0/5 → 5/5).
+- **Black/silver false blobs are mostly 150–390 px long** (real cars ≤ ~135 px in reference space). A size penalty (`MAX_SIDE`, black/silver only) reduces them. Applying it to all colours cost real close-up detections (blobs merge with shadows).
+- Video frames include **motion blur** (e.g. scan-light-c/03): the quality gate (D19) should reject such frames. Not built yet.
 
 ### Next actions (in order)
-1. **Wait for the user's new fixtures** (close-ups, a full space, a car on a diamond, and a video sweep of the empty board; promised for 2026-11-02). Prep them with `npm run fixtures:prep` (extend it to extract frames from the video, e.g. 2 fps).
-2. Build the own-board reference from the **video sweep**, with the sharpness gating → expect a sharp reference over most of the track. Then re-tune black/silver against it (try the edge cue again). The current fixed thresholds are in `src/vision/detect.ts` (the `cls[i] = …` lines).
-3. The user reviews positions with `npm run review` (run `npm run vision:detect -- france <set>` first). Then `test:vision` scores against confirmed truth instead of consensus.
-4. Close-up sets are the new hold-out. Report the D27 numbers on them.
-5. → M1b phone benchmark. Registration ~4s/photo and detection ~2–3s/photo in Node: both need slimming down.
+1. **The user reviews the close-ups:** `npm run review` → http://localhost:4600/photos (needs `npm run vision:detect -- france closeup-light-c` and `… closeup-light-d` beforehand, for the detector's guesses). Then `test:vision` scores real positions instead of names-only.
+2. Quality gate: a blur metric (Laplacian variance) per frame, threshold from the fixtures. Rejected frames don't count as false positives; the app asks to hold steady.
+3. Black/silver, grounded in truth: try the edge-structure cue again, now that the reference is sharp; shadow vs car (a shadow keeps the asphalt's hue and has soft edges).
+4. Board-scan design questions are still open with the user: capture method (film + auto-pick + coverage map, proposed) and timing (empty board right after choosing the track, proposed).
+5. → M1b phone benchmark.
 
 Analysis helpers: `npm run vision:detect` writes `_<set>-blobs.json` (every blob with features and the assigned colour) next to the report.
 
@@ -109,7 +108,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - [ ] Not started. See the plan.
 
 ### Open items needing the user
-- [ ] **New fixtures (the user plans to shoot them on 2026-11-02):** close-up sets like `pos-b-light-a/21`, two positions per lighting; at least one full space + a car on a diamond space; a slow video sweep of the empty board (for the board-scan feature and live mode). These become the new hold-out set.
+- [x] New fixtures delivered 2026-11-02: `closeup-light-c/d` (c = lamp off, d = lamp on), `scan-light-c/d` (video frames). See 05-development-and-testing.md.
+- [ ] User reviews the close-ups: `npm run review` → http://localhost:4600/photos
 - [ ] Decide: board-scan capture = film and auto-pick frames with a coverage map (proposed) vs manual guided photos.
 - [ ] Decide: scan with the board empty, right after choosing the track (proposed).
 - [ ] Decide: store scans + suggest a rescan on unusual noise (proposed) vs scan every game. The user's concern is lighting; the evidence says lighting is handled per frame.
@@ -127,6 +127,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - `fixtures-raw/` holds the original photos **with GPS EXIF**. It's git-ignored; never commit it. `reports/` is git-ignored too: regenerate it.
 
 ## Session log
+- **2026-11-02**: Close-up + video fixtures; prep keeps names and extracts video frames; per-photo review mode; close-up scoring; references built from video; blob hue-splitting (full spaces); black/silver size penalty. Coloured cars 45/45 on close-ups (names-only).
 - **2026-11-01**: M2 rules engine (subagent, 52 tests); review page; `test:vision`; blob grouping; own-board reference experiments (plain median, then sharpness-gated); adaptive thresholds and the edge cue tried and reverted. Awaiting close-up fixtures + a video sweep from the user.
 - **2026-10-29**: Design Q&A with the user → docs 01–07, decisions D1–D28, card data.
 - **2026-10-30**: M0 scaffold; repo created and pushed; Pages deploy working; fixtures prepared; registration 127/128; detection pipeline first version (clusters visible on `pos-a`, too noisy).

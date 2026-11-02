@@ -70,9 +70,12 @@ const OFFSET_WINDOW_PX = 120;
 const MIN_AREA = 120;
 const MAX_AREA = 4500;
 const GROUP_PX = 11;
+const MAX_SIDE = 170;
 const MISSING_COST = 4;
 const MAX_DETECTION_COST = 2.5;
 const COLOUR = 1, DARK = 2, BRIGHT = 3;
+const HUE_CENTER: Partial<Record<CarColor, number>> = { red: 355, yellow: 55, green: 150, blue: 212 };
+const SPLIT_MIN_PX = 60;
 
 export function buildReferenceModel(cv: CV, ref: Rgb): ReferenceModel {
   const { width, height, data } = ref;
@@ -245,46 +248,97 @@ function findBlobs(cv: CV, mask: any, img: Rgb, diff: Float32Array, cls: Uint8Ar
   for (let i = 0; i < lab.length; i++) if (lab[i] > 0 && mask.data[i]) pixels[lab[i]].push(i);
   labels.delete();
 
-  const width = img.width;
   const blobs: Blob[] = [];
   for (let k = 1; k < count; k++) {
-    const all = pixels[k];
-    const area = all.length;
-    if (area < MIN_AREA || area > MAX_AREA) continue;
-    let sx = 0, sy = 0, x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1;
-    for (const p of all) {
-      const x = p % width, y = (p / width) | 0;
-      sx += x; sy += y;
-      if (x < x0) x0 = x; if (x > x1) x1 = x;
-      if (y < y0) y0 = y; if (y > y1) y1 = y;
+    if (pixels[k].length < MIN_AREA || pixels[k].length > MAX_AREA * 2) continue;
+    for (const part of splitByHue(pixels[k], img, cls)) {
+      if (part.length < MIN_AREA || part.length > MAX_AREA) continue;
+      blobs.push(makeBlob(part, img, diff, cls));
     }
-    const frac = (c: number) => all.filter((p) => cls[p] === c).length / area;
-    const colourFrac = frac(COLOUR), darkFrac = frac(DARK), brightFrac = frac(BRIGHT);
-    // Colour from the colourful pixels if there are enough, else from the
-    // half of the blob that differs most (drops edges/shadow).
-    const colourful = all.filter((p) => cls[p] === COLOUR);
-    const px = colourful.length >= 20
-      ? colourful
-      : [...all].sort((p, q) => diff[q] - diff[p]).slice(0, Math.max(10, area >> 1));
-    let r = 0, g = 0, b = 0, strength = 0;
-    for (const p of px) { r += img.data[p * 3]; g += img.data[p * 3 + 1]; b += img.data[p * 3 + 2]; strength += diff[p]; }
-    const rgb: [number, number, number] = [r / px.length, g / px.length, b / px.length];
-    const box: [number, number, number, number] = [x0, y0, x1 - x0 + 1, y1 - y0 + 1];
-    blobs.push({
-      x: sx / area,
-      y: sy / area,
-      area,
-      box,
-      strength: strength / px.length,
-      fill: area / (box[2] * box[3]),
-      colourFrac,
-      darkFrac,
-      brightFrac,
-      rgb,
-      hsv: rgbToHsv(...rgb),
-    });
   }
   return blobs;
+}
+
+/**
+ * Two cars side by side on one space (a full space) merge into one group.
+ * If the group's colourful pixels form two clearly different car hues, each
+ * with enough pixels, split the group: colourful pixels by hue, the rest by
+ * distance to the two parts' centroids.
+ */
+function splitByHue(all: number[], img: Rgb, cls: Uint8Array): number[][] {
+  const width = img.width;
+  const colourful = all.filter((p) => cls[p] === COLOUR);
+  if (colourful.length < 2 * SPLIT_MIN_PX) return [all];
+  const nearest = (p: number): CarColor | null => {
+    const [h, s] = rgbToHsv(img.data[p * 3], img.data[p * 3 + 1], img.data[p * 3 + 2]);
+    if (s < 0.3) return null;
+    let best: CarColor | null = null, bestD = 25;
+    for (const [c, centre] of Object.entries(HUE_CENTER) as [CarColor, number][]) {
+      const d = Math.min(Math.abs(h - centre), 360 - Math.abs(h - centre));
+      if (d < bestD) { bestD = d; best = c; }
+    }
+    return best;
+  };
+  const byHue = new Map<CarColor, number[]>();
+  for (const p of colourful) {
+    const c = nearest(p);
+    if (c) byHue.set(c, [...(byHue.get(c) ?? []), p]);
+  }
+  const groups = [...byHue.values()].filter((g) => g.length >= SPLIT_MIN_PX && g.length >= 0.25 * colourful.length);
+  if (groups.length < 2) return [all];
+  groups.sort((g, h) => h.length - g.length);
+  const [ga, gb] = groups;
+  const centre = (g: number[]) => {
+    let x = 0, y = 0;
+    for (const p of g) { x += p % width; y += (p / width) | 0; }
+    return [x / g.length, y / g.length];
+  };
+  const [ca, cb] = [centre(ga), centre(gb)];
+  const inA = new Set(ga), inB = new Set(gb);
+  const a: number[] = [], b: number[] = [];
+  for (const p of all) {
+    if (inA.has(p)) { a.push(p); continue; }
+    if (inB.has(p)) { b.push(p); continue; }
+    const x = p % width, y = (p / width) | 0;
+    (Math.hypot(x - ca[0], y - ca[1]) <= Math.hypot(x - cb[0], y - cb[1]) ? a : b).push(p);
+  }
+  return [a, b];
+}
+
+function makeBlob(all: number[], img: Rgb, diff: Float32Array, cls: Uint8Array): Blob {
+  const width = img.width;
+  const area = all.length;
+  let sx = 0, sy = 0, x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1;
+  for (const p of all) {
+    const x = p % width, y = (p / width) | 0;
+    sx += x; sy += y;
+    if (x < x0) x0 = x; if (x > x1) x1 = x;
+    if (y < y0) y0 = y; if (y > y1) y1 = y;
+  }
+  const frac = (c: number) => all.filter((p) => cls[p] === c).length / area;
+  // Colour from the colourful pixels if there are enough, else from the
+  // half of the blob that differs most (drops edges/shadow).
+  const colourful = all.filter((p) => cls[p] === COLOUR);
+  const px = colourful.length >= 20
+    ? colourful
+    : [...all].sort((p, q) => diff[q] - diff[p]).slice(0, Math.max(10, area >> 1));
+  let r = 0, g = 0, b = 0, strength = 0;
+  for (const p of px) { r += img.data[p * 3]; g += img.data[p * 3 + 1]; b += img.data[p * 3 + 2]; strength += diff[p]; }
+  const rgb: [number, number, number] = [r / px.length, g / px.length, b / px.length];
+  const box: [number, number, number, number] = [x0, y0, x1 - x0 + 1, y1 - y0 + 1];
+  return {
+    x: sx / area,
+    y: sy / area,
+    area,
+    box,
+    strength: strength / px.length,
+    fill: area / (box[2] * box[3]),
+    colourFrac: frac(COLOUR),
+    darkFrac: frac(DARK),
+    brightFrac: frac(BRIGHT),
+    rgb,
+    hsv: rgbToHsv(...rgb),
+  };
 }
 
 // --- colour models and assignment ----------------------------------------
@@ -294,9 +348,9 @@ export function colorCost(blob: Blob, color: CarColor): number {
   const [h, s, v] = blob.hsv;
   // Real cars are at least a few hundred px² in reference space.
   const small = Math.max(0, 500 - blob.area) / 200;
-  const hueCenter: Partial<Record<CarColor, number>> = { red: 355, yellow: 55, green: 150, blue: 212 };
-  if (color in hueCenter) {
-    const dh = Math.min(Math.abs(h - hueCenter[color]!), 360 - Math.abs(h - hueCenter[color]!)) / 30;
+  if (color in HUE_CENTER) {
+    const centre = HUE_CENTER[color]!;
+    const dh = Math.min(Math.abs(h - centre), 360 - Math.abs(h - centre)) / 30;
     const lowSat = Math.max(0, 0.35 - s) / 0.1;
     return dh + lowSat + Math.max(0, 0.3 - blob.colourFrac) / 0.1 + small;
   }
@@ -304,10 +358,14 @@ export function colorCost(blob: Blob, color: CarColor): number {
   // on the France fixtures: the black car is a large, mostly-darker blob;
   // the silver car is two-tone (bright body, dark wheels/shadow), whereas
   // asphalt sheen and white markings are bright only.
+  // Size limit for black/silver only: their false blobs (blur, shadow, glare)
+  // are mostly 150–390 px long in reference space; real cars ≤ ~135 px.
+  // Coloured cars don't need it, and their blobs can grow by merging with a shadow.
+  const tooLong = Math.max(0, Math.max(blob.box[2], blob.box[3]) - MAX_SIDE) / 10;
   if (color === "black") {
-    return Math.max(0, v - 0.3) / 0.06 + Math.max(0, 0.45 - blob.darkFrac) / 0.1 + Math.max(0, 900 - blob.area) / 200;
+    return tooLong + Math.max(0, v - 0.3) / 0.06 + Math.max(0, 0.45 - blob.darkFrac) / 0.1 + Math.max(0, 900 - blob.area) / 200;
   }
-  return Math.max(0, s - 0.22) / 0.06 + Math.max(0, 0.3 - blob.brightFrac) / 0.1 +
+  return tooLong + Math.max(0, s - 0.22) / 0.06 + Math.max(0, 0.3 - blob.brightFrac) / 0.1 +
     Math.max(0, 0.12 - blob.darkFrac) / 0.04 + Math.max(0, 800 - blob.area) / 200;
 }
 

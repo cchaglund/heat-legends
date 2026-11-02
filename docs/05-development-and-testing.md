@@ -17,6 +17,17 @@
 | `pos-b-light-a` | 23 | all 6, positions B | daylight | Detection + assignment |
 | `pos-b-light-b` | 30 | all 6, positions B | daylight + ceiling light | Lighting normalization (same positions, other light) |
 
+Added 2026-11-02 (close-ups, the realistic use case, D30). **light-c = ceiling lamp off, light-d = ceiling lamp on** (both daytime):
+
+| Set | Items | What |
+|---|---|---|
+| `closeup-light-c` | 12 photos | Close-ups. The file name lists the cars of interest (`red-silver-2.jpg`); positions differ per photo. Includes a full space (green + yellow side by side). |
+| `closeup-light-d` | 20 photos | Same, with the lamp on |
+| `scan-light-c` | 23 frames | 1 fps frames from a ~23s video sweep of the empty board (the board-scan use case) |
+| `scan-light-d` | 21 frames | Same, with the lamp on |
+
+Close-up truth is per photo (`truth.json` → `photos.<name>.<colour> = [x, y]` in reference px, or `null` = absent), entered via `npm run review` → `/photos`.
+
 Missing so far: **full spaces** (2 cars side by side) and cars right on a diamond space. To be shot later as `pos-c-*`.
 
 What the photos show:
