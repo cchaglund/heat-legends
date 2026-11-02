@@ -325,10 +325,16 @@ function makeBlob(all: number[], img: Rgb, diff: Float32Array, cls: Uint8Array):
   let r = 0, g = 0, b = 0, strength = 0;
   for (const p of px) { r += img.data[p * 3]; g += img.data[p * 3 + 1]; b += img.data[p * 3 + 2]; strength += diff[p]; }
   const rgb: [number, number, number] = [r / px.length, g / px.length, b / px.length];
+  // A coloured car's blob often includes its shadow; centre it on the paint.
+  let cx = sx / area, cy = sy / area;
+  if (colourful.length >= 20) {
+    cx = colourful.reduce((t, p) => t + (p % width), 0) / colourful.length;
+    cy = colourful.reduce((t, p) => t + ((p / width) | 0), 0) / colourful.length;
+  }
   const box: [number, number, number, number] = [x0, y0, x1 - x0 + 1, y1 - y0 + 1];
   return {
-    x: sx / area,
-    y: sy / area,
+    x: cx,
+    y: cy,
     area,
     box,
     strength: strength / px.length,
@@ -365,8 +371,12 @@ export function colorCost(blob: Blob, color: CarColor): number {
   if (color === "black") {
     return tooLong + Math.max(0, v - 0.3) / 0.06 + Math.max(0, 0.45 - blob.darkFrac) / 0.1 + Math.max(0, 900 - blob.area) / 200;
   }
-  return tooLong + Math.max(0, s - 0.22) / 0.06 + Math.max(0, 0.3 - blob.brightFrac) / 0.1 +
-    Math.max(0, 0.12 - blob.darkFrac) / 0.04 + Math.max(0, 800 - blob.area) / 200;
+  // Close-ups (D30) show the silver car as a compact, almost all-bright blob:
+  // accept that as an alternative to two-tone.
+  const twoTone = Math.max(0, 0.12 - blob.darkFrac) / 0.04 + Math.max(0, 800 - blob.area) / 200;
+  const allBright = Math.max(0, 0.75 - blob.brightFrac) / 0.05 + Math.max(0, 450 - blob.area) / 100 +
+    Math.max(0, blob.area - 1100) / 200;
+  return tooLong + Math.max(0, s - 0.22) / 0.06 + Math.max(0, 0.3 - blob.brightFrac) / 0.1 + Math.min(twoTone, allBright);
 }
 
 /** Optimal one-to-one assignment (DP over colour subsets; ≤ 6 colours). */

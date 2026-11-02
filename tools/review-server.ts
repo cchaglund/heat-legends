@@ -198,7 +198,9 @@ function draw(){ wrap.querySelectorAll('.m').forEach(m=>m.remove()); if(!ph.H) r
 img.onclick = e => { if(!ph.H||!armed) return; const r=img.getBoundingClientRect(), s=img.naturalWidth/r.width;
   answer[armed] = ap(ph.H,[(e.clientX-r.left)*s,(e.clientY-r.top)*s]).map(Math.round);
   const rest = ph.named.filter(c=>!(c in answer)); armed = rest[0] ?? armed; draw(); buttons(); };
-async function save(){ const r = await fetch('/save-photo',{method:'POST',body:JSON.stringify({set:set.set,photo:ph.name,positions:answer})});
+async function save(){ // a dashed guess left in place counts as confirmed
+  for (const c of ph.named) if (!(c in answer) && ph.guess[c]) answer[c] = ph.guess[c];
+  const r = await fetch('/save-photo',{method:'POST',body:JSON.stringify({set:set.set,photo:ph.name,positions:answer})});
   $('msg').textContent = await r.text(); if(r.ok){ ph.truth = {...answer}; $('photo').options[$('photo').value].text='✓ '+ph.name; } }
 $('save').onclick = save; $('set').onchange=()=>loadSet(+$('set').value);
 $('photo').onchange=()=>loadPhoto(+$('photo').value);

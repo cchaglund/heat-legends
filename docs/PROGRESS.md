@@ -36,24 +36,33 @@ Closer look at the "fixed-spot yellow" false positive (`reports/yellow-false-pos
 ### State on 2026-11-02
 New fixtures (close-ups + video scans, see 05-development-and-testing.md). The detection reference is now built from a **video sweep** (`npx tsx tools/build-own-reference.ts france scan-light-d` → `reports/ref/france-scan-light-d.png`): 91–92% of the board has ≥3 sharp views (vs 57% from the bird's-eye photos).
 
-`DETECT_REF=reports/ref/france-scan-light-d.png npm run test:vision -- france closeup-light-c closeup-light-d empty-light-b scan-light-c scan-light-d`:
+`DETECT_REF=reports/ref/france-scan-light-d.png npm run test:vision -- france closeup empty scan`:
 
-| | red | blue | green | yellow | black | silver |
+Close-ups are now **confirmed by the user** (`truth.json` "photos", 2026-11-02). Hit = the right colour within 40px of the marked spot.
+
+| Close-ups (32 photos) | red | blue | green | yellow | black | silver |
 |---|---|---|---|---|---|---|
-| Close-ups, named cars detected (**names-only**, positions not yet verified) | 13/13 | 17/17 | 10/10 | 10/10 | 3/5 | 5/13 |
+| names-only (before review) | 13/13 | 17/17 | 10/10 | 10/10 | 3/5 | 5/13 |
+| **confirmed**, before today's fixes | 13/13 | 16/16 | 9/10 | 8/10 | 0/5 | 1/13 |
+| **confirmed**, now | 13/13 | 16/16 | 9/10 | 10/10 | 1/5 | 5/13 |
 
-False detections: scan-light-d 0.24/photo, scan-light-c 0.61, empty-light-b 1.19. **All of them are black/silver**; coloured false positives ≈ 0.
+False detections now: empty-light-a 1.26/photo, empty-light-b 1.65, scan-light-c 0.96, scan-light-d 0.29. Almost all black/silver (silver rose with the all-bright rule, e.g. empty-light-b 14 → 27).
 
-Findings today:
-- **Cross-lighting works:** a reference scanned with the lamp on, used on lamp-off close-ups (and the reverse), detects the coloured cars perfectly. Storing the scan is fine (the user's concern was lighting).
-- **Full spaces:** two cars side by side merged into one blob → `splitByHue` in `detect.ts` splits a group whose colourful pixels form two car hues (green 0/5 → 5/5).
-- **Black/silver false blobs are mostly 150–390 px long** (real cars ≤ ~135 px in reference space). A size penalty (`MAX_SIDE`, black/silver only) reduces them. Applying it to all colours cost real close-up detections (blobs merge with shadows).
-- Video frames include **motion blur** (e.g. scan-light-c/03): the quality gate (D19) should reject such frames. Not built yet.
+Findings:
+- **Names-only hid the black/silver problem:** the detector found "a silver" in most photos, but in the wrong place.
+- **At the true silver spot** there is nearly always a blob (≤11px off): compact (500–850 px²), almost all BRIGHT, no dark. The old two-tone rule rejected it → added an "all-bright" alternative in `colorCost`. It also accepts glare/markings, hence the false-positive rise.
+- **At the true black spot** the evidence is poor (a tiny blob, a bright blob, or one merged with neighbours). Black is "best effort" in D27.
+- **Coloured blobs swallow their shadow** and the centroid drifts 40–70px → `makeBlob` now centres on the colourful pixels (yellow 8 → 10).
+- The remaining green miss (`closeup-light-d/yellow-green-blue-2`): a yellow+green group of 4390 px² that `splitByHue` didn't split.
+- **Cross-lighting works:** a reference scanned with the lamp on detects the coloured cars on lamp-off close-ups (and the reverse).
+- Video frames include **motion blur** (e.g. scan-light-c/03); the quality gate (D19) should reject them.
+
+**Likely way forward for black/silver: stop tuning pixels and use the track.** A car can only stand on a space. Once M3 annotates the spaces, a blob counts only when it sits on a space, and only one car fits per spot. Most black/silver false blobs (verges, markings, glare streaks) are not on a space centre. Measure this on the fixtures as soon as `tracks/france.json` exists.
 
 ### Next actions (in order)
-1. **The user reviews the close-ups:** `npm run review` → http://localhost:4600/photos (needs `npm run vision:detect -- france closeup-light-c` and `… closeup-light-d` beforehand, for the detector's guesses). Then `test:vision` scores real positions instead of names-only.
-2. Quality gate: a blur metric (Laplacian variance) per frame, threshold from the fixtures. Rejected frames don't count as false positives; the app asks to hold steady.
-3. Black/silver, grounded in truth: try the edge-structure cue again, now that the reference is sharp; shadow vs car (a shadow keeps the asphalt's hue and has soft edges).
+1. Quality gate: a blur metric (Laplacian variance) per frame, threshold from the fixtures. Rejected frames don't count as false positives; the app asks to hold steady.
+2. Pull M3's annotation forward far enough to get space positions for France, then test "blob must be on a space" against the black/silver false positives (see above). This is probably the big lever, not more pixel rules.
+3. Optional black/silver pixel work: why the silver assignment still picks a wrong bright blob in 8/13 close-ups (regenerate blobs with `DETECT_REF=reports/ref/france-scan-light-d.png npm run vision:detect -- france closeup-light-d` and compare costs).
 4. Board-scan design questions are still open with the user: capture method (film + auto-pick + coverage map, proposed) and timing (empty board right after choosing the track, proposed).
 5. → M1b phone benchmark.
 
@@ -109,7 +118,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 
 ### Open items needing the user
 - [x] New fixtures delivered 2026-11-02: `closeup-light-c/d` (c = lamp off, d = lamp on), `scan-light-c/d` (video frames). See 05-development-and-testing.md.
-- [ ] User reviews the close-ups: `npm run review` → http://localhost:4600/photos
+- [x] User reviewed the close-ups (2026-11-02). The review page now saves left-in-place guesses as confirmed (earlier saves were backfilled from the guesses shown).
 - [ ] Decide: board-scan capture = film and auto-pick frames with a coverage map (proposed) vs manual guided photos.
 - [ ] Decide: scan with the board empty, right after choosing the track (proposed).
 - [ ] Decide: store scans + suggest a rescan on unusual noise (proposed) vs scan every game. The user's concern is lighting; the evidence says lighting is handled per frame.
@@ -123,10 +132,12 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - Use **chroma** (max−min), not HSV saturation, for "is this colourful" on dark pixels: saturation explodes near black.
 - Silver and black cars are two-tone in the data (body + wheels/shadow/highlights). Single-class rules miss them.
 - Fixture photos are shallow-angle and handheld, by design (D25). Cars are ~30–50px long in a 2048px photo.
+- **Names-only scores lie** for black/silver: a detection of the right colour somewhere isn't a hit. Use confirmed truth.
 - Registration takes ~4s/photo in Node. The detection report re-registers every photo, so a full run takes several minutes. Pass a set filter (`-- france pos-a`) while iterating.
 - `fixtures-raw/` holds the original photos **with GPS EXIF**. It's git-ignored; never commit it. `reports/` is git-ignored too: regenerate it.
 
 ## Session log
+- **2026-11-02 (b)**: User confirmed close-up positions; review save bug fixed + backfilled; real-position scoring exposed black/silver; paint-centred blobs (yellow 10/10); all-bright silver rule (5/13, more FPs). Next: blur gate, on-space prior.
 - **2026-11-02**: Close-up + video fixtures; prep keeps names and extracts video frames; per-photo review mode; close-up scoring; references built from video; blob hue-splitting (full spaces); black/silver size penalty. Coloured cars 45/45 on close-ups (names-only).
 - **2026-11-01**: M2 rules engine (subagent, 52 tests); review page; `test:vision`; blob grouping; own-board reference experiments (plain median, then sharpness-gated); adaptive thresholds and the edge cue tried and reverted. Awaiting close-up fixtures + a video sweep from the user.
 - **2026-10-29**: Design Q&A with the user → docs 01–07, decisions D1–D28, card data.
