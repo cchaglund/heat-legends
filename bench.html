@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Heat Legends bench</title>
+    <style>
+      body { font: 15px system-ui; margin: 16px; background: #fff; color: #111; }
+      button, label { font: inherit; padding: 10px 14px; display: inline-block; margin: 4px 0; }
+      label { border: 1px solid #888; border-radius: 4px; }
+      table { border-collapse: collapse; } td { padding: 2px 10px 2px 0; }
+      .err { color: #b00; white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <h1>Pipeline bench (M1b)</h1>
+    <button id="fixtures" disabled>Run 5 fixture photos</button>
+    <label>Take a photo <input id="camera" type="file" accept="image/*" capture="environment" disabled /></label>
+    <div id="out"></div>
+    <script type="module" src="/src/bench/main.ts"></script>
+  </body>
+</html>

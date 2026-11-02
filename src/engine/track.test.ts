@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { syntheticAnnotation } from "./synthetic";
-import { cornersAhead, deriveTrack, spaceLabel } from "./track";
+import { cornersAhead, deriveTrack, spaceAtPoint, spaceLabel } from "./track";
 import type { TrackAnnotation } from "./types";
 
 const ann = () =>
@@ -72,4 +72,15 @@ describe("cornersAhead / spaceLabel", () => {
     [20, "space 20"],
     [39, "diamond 2 (space 39)"],
   ])("space %i → %s", (space, label) => expect(spaceLabel(t, space)).toBe(label));
+});
+
+describe("spaceAtPoint", () => {
+  it("finds the space under a point on the ring, and -1 off the track", () => {
+    const t = deriveTrack(ann());
+    // ring of radius 300–400 around (500, 500); space 0 starts at angle 0
+    const a = (2 * Math.PI * 0.5) / 40;
+    expect(spaceAtPoint(t, 500 + 350 * Math.cos(a), 500 + 350 * Math.sin(a))).toBe(0);
+    expect(spaceAtPoint(t, 500, 500)).toBe(-1);
+    expect(spaceAtPoint(t, 950, 500)).toBe(-1);
+  });
 });

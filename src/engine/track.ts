@@ -77,3 +77,14 @@ export function deriveTrack(ann: TrackAnnotation): Track {
 
   return { id: ann.id, referenceImage: ann.referenceImage, laps: ann.laps, spaces, corners, finishAfter };
 }
+
+/** Index of the space whose quad contains (x, y) in reference px, or -1. */
+export function spaceAtPoint(track: Track, x: number, y: number): number {
+  return track.spaces.findIndex(({ quad: q }) => {
+    const cross = q.map((p, i) => {
+      const r = q[(i + 1) % q.length];
+      return (r.x - p.x) * (y - p.y) - (r.y - p.y) * (x - p.x);
+    });
+    return cross.every((c) => c >= 0) || cross.every((c) => c <= 0);
+  });
+}

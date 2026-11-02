@@ -67,6 +67,8 @@ export type ReferenceModel = {
   track: Uint8Array;
   /** Board away from the track: used to fit the lighting. */
   background: Uint8Array;
+  /** The reference's gradient, max over 7px (for `edgeExcess`). */
+  gradMax: Float32Array;
 };
 
 const DIFF_THRESHOLD = 45;
@@ -87,11 +89,13 @@ export function buildReferenceModel(cv: CV, ref: Rgb): ReferenceModel {
   const { width, height, data } = ref;
   const n = width * height;
   const asphalt = new cv.Mat(height, width, cv.CV_8UC1);
+  // Mat.data is a getter that makes a new view each call: hoist it out of loops.
+  const asphaltData = asphalt.data;
   for (let i = 0, j = 0; i < n; i++, j += 3) {
     // Chroma, not saturation: saturation is unstable on near-black asphalt.
     const max = Math.max(data[j], data[j + 1], data[j + 2]);
     const chroma = max - Math.min(data[j], data[j + 1], data[j + 2]);
-    asphalt.data[i] = max < 97 && chroma < 33 ? 255 : 0;
+    asphaltData[i] = max < 97 && chroma < 33 ? 255 : 0;
   }
   // Close over the white lane markings, drop speckles, then grow so cars
   // whose tops stick out over the track edge still count.
@@ -105,15 +109,15 @@ export function buildReferenceModel(cv: CV, ref: Rgb): ReferenceModel {
   cv.erode(blurred, lo, k);
   cv.dilate(blurred, hi, k);
   const chroma = new cv.Mat(height, width, cv.CV_8UC1);
+  const b = blurred.data, chromaData = chroma.data;
   for (let i = 0, j = 0; i < n; i++, j += 3) {
-    const b = blurred.data;
-    chroma.data[i] = Math.max(b[j], b[j + 1], b[j + 2]) - Math.min(b[j], b[j + 1], b[j + 2]);
+    chromaData[i] = Math.max(b[j], b[j + 1], b[j + 2]) - Math.min(b[j], b[j + 1], b[j + 2]);
   }
   const chromaHi = new cv.Mat();
   cv.dilate(chroma, chromaHi, k);
   const vOf = (m: any) => {
-    const out = new Uint8Array(n);
-    for (let i = 0, j = 0; i < n; i++, j += 3) out[i] = Math.max(m.data[j], m.data[j + 1], m.data[j + 2]);
+    const out = new Uint8Array(n), d = m.data;
+    for (let i = 0, j = 0; i < n; i++, j += 3) out[i] = Math.max(d[j], d[j + 1], d[j + 2]);
     return out;
   };
   const out = {
@@ -124,6 +128,7 @@ export function buildReferenceModel(cv: CV, ref: Rgb): ReferenceModel {
     vHi: vOf(hi),
     chromaHi: new Uint8Array(chromaHi.data),
     track: new Uint8Array(track.data),
+    gradMax: localMaxGradient(cv, ref),
     background: new Uint8Array(farFromTrack.data).map((v) => (v ? 0 : 255)),
   };
   [asphalt, opened, track, farFromTrack, blurred, k, lo, hi, chroma, chromaHi].forEach((m) => m.delete());
@@ -150,7 +155,7 @@ export function detectCars(
   const a = blur(cv, normalized, 3);
   const diff = new Float32Array(n);
   const cls = new Uint8Array(n);
-  const maskMat = cv.Mat.zeros(height, width, cv.CV_8UC1);
+  const maskMat = cv.Mat.zeros(height, width, cv.CV_8UC1), maskData = maskMat.data;
   for (let i = 0, j = 0; i < n; i++, j += 3) {
     if (!valid[i] || !model.track[i]) continue;
     let d2 = 0;
@@ -166,12 +171,12 @@ export function detectCars(
     if (d > DIFF_THRESHOLD && chroma > 55 && chroma > model.chromaHi[i] + 30) cls[i] = COLOUR;
     else if (d > 25 && v < model.vLo[i] - 18) cls[i] = DARK;
     else if (d > DIFF_THRESHOLD && chroma < 50 && v > model.vHi[i] + 30) cls[i] = BRIGHT;
-    if (cls[i]) maskMat.data[i] = 255;
+    if (cls[i]) maskData[i] = 255;
   }
   const cleaned = morph(cv, morph(cv, maskMat, cv.MORPH_OPEN, 3, true), cv.MORPH_CLOSE, 9, true);
   const mask = new Uint8Array(cleaned.data);
 
-  const blobs = findBlobs(cv, cleaned, normalized, diff, cls, edgeExcess(cv, model, normalized));
+  const blobs = findBlobs(cv, cleaned, normalized, diff, cls, edgeExcess(model, normalized));
   cleaned.delete();
 
   const onTrack = valid.map((v, i) => v && model.track[i] ? 1 : 0);
@@ -184,21 +189,28 @@ export function detectCars(
  * gradient (7px window, for registration error), floored at 0. Printed
  * lines cancel out; a car's outline and wheels remain, smooth glare doesn't.
  */
-function edgeExcess(cv: CV, model: ReferenceModel, frame: Rgb): Float32Array {
-  const grad = (img: Rgb) => {
-    const { width: w, height: h, data } = img;
-    const g = new Float32Array(w * h), out = cv.Mat.zeros(h, w, cv.CV_32F);
-    for (let i = 0, j = 0; i < g.length; i++, j += 3) g[i] = (data[j] * 77 + data[j + 1] * 150 + data[j + 2] * 29) / 256;
-    for (let y = 1; y < h - 1; y++) for (let x = 1, i = y * w + 1; x < w - 1; x++, i++)
-      out.data32F[i] = Math.abs(g[i + 1] - g[i - 1]) + Math.abs(g[i + w] - g[i - w]);
-    return out;
-  };
-  const f = grad(frame), r = grad(model.rgb), rMax = new cv.Mat();
+function edgeExcess(model: ReferenceModel, frame: Rgb): Float32Array {
+  const { width: w, height: h, data } = frame;
+  const out = new Float32Array(w * h);
+  const g = (i: number) => (data[i * 3] * 77 + data[i * 3 + 1] * 150 + data[i * 3 + 2] * 29) / 256;
+  for (let y = 1; y < h - 1; y++) for (let x = 1, i = y * w + 1; x < w - 1; x++, i++) {
+    if (!model.track[i]) continue;
+    out[i] = Math.max(0, Math.abs(g(i + 1) - g(i - 1)) + Math.abs(g(i + w) - g(i - w)) - model.gradMax[i]);
+  }
+  return out;
+}
+
+function localMaxGradient(cv: CV, img: Rgb): Float32Array {
+  const { width: w, height: h, data } = img;
+  const gray = new Float32Array(w * h), grad = cv.Mat.zeros(h, w, cv.CV_32F), max = new cv.Mat();
+  for (let i = 0, j = 0; i < gray.length; i++, j += 3) gray[i] = (data[j] * 77 + data[j + 1] * 150 + data[j + 2] * 29) / 256;
+  const gd = grad.data32F;
+  for (let y = 1; y < h - 1; y++) for (let x = 1, i = y * w + 1; x < w - 1; x++, i++)
+    gd[i] = Math.abs(gray[i + 1] - gray[i - 1]) + Math.abs(gray[i + w] - gray[i - w]);
   const k = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(7, 7));
-  cv.dilate(r, rMax, k);
-  const out = new Float32Array(f.data32F.length);
-  for (let i = 0; i < out.length; i++) out[i] = Math.max(0, f.data32F[i] - rMax.data32F[i]);
-  [f, r, rMax, k].forEach((m) => m.delete());
+  cv.dilate(grad, max, k);
+  const out = new Float32Array(max.data32F);
+  [grad, max, k].forEach((m) => m.delete());
   return out;
 }
 
@@ -231,19 +243,22 @@ function normalizeLighting(model: ReferenceModel, frame: Rgb, valid: Uint8Array)
 function removeLocalOffset(cv: CV, model: ReferenceModel, frame: Rgb, valid: Uint8Array): Rgb {
   const { width, height } = frame;
   const n = width * height;
-  // Work at quarter resolution: the offset field is smooth.
+  // Work at 1/8 resolution: the offset field is smooth (and medianBlur with a
+  // big kernel is slow in WASM).
   const signed = new cv.Mat(height, width, cv.CV_8UC3);
+  const sd = signed.data;
   for (let i = 0; i < n * 3; i++) {
-    signed.data[i] = valid[(i / 3) | 0] ? clamp(128 + (frame.data[i] - model.rgb.data[i]) / 2) : 128;
+    sd[i] = valid[(i / 3) | 0] ? clamp(128 + (frame.data[i] - model.rgb.data[i]) / 2) : 128;
   }
   const small = new cv.Mat();
-  cv.resize(signed, small, new cv.Size(width >> 2, height >> 2), 0, 0, cv.INTER_AREA);
+  cv.resize(signed, small, new cv.Size(width >> 3, height >> 3), 0, 0, cv.INTER_AREA);
   const med = new cv.Mat();
-  cv.medianBlur(small, med, OFFSET_WINDOW_PX >> 2 | 1);
+  cv.medianBlur(small, med, OFFSET_WINDOW_PX >> 3 | 1);
   const field = new cv.Mat();
   cv.resize(med, field, new cv.Size(width, height), 0, 0, cv.INTER_LINEAR);
   const out = new Uint8Array(frame.data.length);
-  for (let i = 0; i < n * 3; i++) out[i] = clamp(frame.data[i] - (field.data[i] - 128) * 2);
+  const fd = field.data;
+  for (let i = 0; i < n * 3; i++) out[i] = clamp(frame.data[i] - (fd[i] - 128) * 2);
   [signed, small, med, field].forEach((m) => m.delete());
   return { width, height, data: out };
 }
@@ -278,7 +293,8 @@ function findBlobs(cv: CV, mask: any, img: Rgb, diff: Float32Array, cls: Uint8Ar
   grouped.delete();
   const lab = labels.data32S as Int32Array;
   const pixels: number[][] = Array.from({ length: count }, () => []);
-  for (let i = 0; i < lab.length; i++) if (lab[i] > 0 && mask.data[i]) pixels[lab[i]].push(i);
+  const md = mask.data;
+  for (let i = 0; i < lab.length; i++) if (lab[i] > 0 && md[i]) pixels[lab[i]].push(i);
   labels.delete();
 
   const blobs: Blob[] = [];
@@ -507,7 +523,8 @@ function largestComponent(cv: CV, mask: any): any {
   for (let k = 1; k < count; k++) keep[k] = stats.data32S[k * 5 + 4] >= largest * 0.15 ? 1 : 0;
   const out = cv.Mat.zeros(mask.rows, mask.cols, cv.CV_8UC1);
   const lab = labels.data32S;
-  for (let i = 0; i < lab.length; i++) if (keep[lab[i]]) out.data[i] = 255;
+  const od = out.data;
+  for (let i = 0; i < lab.length; i++) if (keep[lab[i]]) od[i] = 255;
   labels.delete(); stats.delete(); centroids.delete(); mask.delete();
   return out;
 }

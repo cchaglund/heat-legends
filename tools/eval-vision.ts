@@ -15,8 +15,7 @@
 // "photos" when reviewed, else "names-only" = the colour was detected at all. Registration comes from the vision:detect cache when present.
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { deriveTrack } from "../src/engine/track";
-import type { Point } from "../src/engine/types";
+import { deriveTrack, spaceAtPoint } from "../src/engine/track";
 import { loadCv } from "../src/vision/cv";
 import { CAR_COLORS, buildReferenceModel, detectCars, type Blob, type CarColor, type Detection } from "../src/vision/detect";
 import { prepareReference, register, type Registration } from "../src/vision/registration";
@@ -36,13 +35,12 @@ const detectRef = process.env.DETECT_REF ? await loadRgb(process.env.DETECT_REF)
 const model = buildReferenceModel(cv, detectRef);
 console.log(`detection reference: ${process.env.DETECT_REF ?? "BGG scan"}\n`);
 
-// SPACES=<margin px>: only blobs whose centre is on a space of tracks/<track>.json.
+// SPACES=1: only blobs whose centre is on a space of tracks/<track>.json.
 let accept: ((b: { x: number; y: number }) => boolean) | undefined;
 if (process.env.SPACES !== undefined) {
   const t = deriveTrack(JSON.parse(await readFile(join("tracks", `${track}.json`), "utf8")));
-  const margin = Number(process.env.SPACES) || 0;
-  accept = (b) => t.spaces.some((s) => insideQuad(s.quad, b.x, b.y, margin));
-  console.log(`on-space filter: ${t.spaces.length} spaces, margin ${margin}px`);
+  accept = (b) => spaceAtPoint(t, b.x, b.y) >= 0;
+  console.log(`on-space filter: ${t.spaces.length} spaces`);
 }
 
 const rows: string[] = [];
@@ -66,6 +64,18 @@ for (const set of (await readdir(join("fixtures", track))).sort()) {
       fpLog.push(`${set}/${file}\t${d.color}\t${Math.round(d.blob.x)}\t${Math.round(d.blob.y)}\t${d.blob.area}\t${d.blob.box[2]}x${d.blob.box[3]}\t${d.blob.brightFrac.toFixed(2)}\t${d.blob.darkFrac.toFixed(2)}\t${d.cost.toFixed(2)}\t${d.blob.edge.toFixed(2)}`);
     if (process.env.SHARPNESS_LOG) sharpLog.push(`${set}/${file}\t${res?.sharpness.toFixed(3) ?? "-"}\t${res?.detections.map((d) => d.color).join(",") ?? ""}`);
     names.push(file.replace(/\.jpg$/, ""));
+  }
+  // MULTIVIEW=<px> [MULTIVIEW_WIN=<n>]: keep a detection only if one of the n previous or next photos of the
+  // set (taken moments apart from another angle) has the same colour within
+  // <px> of it: cars stay put, glare moves with the camera (D15 live mode).
+  if (process.env.MULTIVIEW) {
+    const px = Number(process.env.MULTIVIEW) || 25;
+    const raw = perPhoto.map((ds) => ds);
+    for (let k = 0; k < raw.length; k++) {
+      const win = Number(process.env.MULTIVIEW_WIN) || 1;
+      const near = raw.filter((_, j) => j !== k && Math.abs(j - k) <= win).flat();
+      perPhoto[k] = raw[k].filter((d) => near.some((e) => e.color === d.color && Math.hypot(e.blob.x - d.blob.x, e.blob.y - d.blob.y) < px));
+    }
   }
   const regNote = failed ? `   (${failed} registration failures)` : "";
 
@@ -134,24 +144,14 @@ function consensus(perPhoto: Detection[][]): Truth {
 }
 
 async function cachedRegister(set: string, file: string, photo: Rgb): Promise<Registration> {
-  const path = join("reports", "cache", track, `${set}-${file}.json`);
+  // REG_CACHE=<dir>: a separate cache, e.g. to score a changed registration
+  const path = join(process.env.REG_CACHE ?? join("reports", "cache"), track, `${set}-${file}.json`);
   try {
     return JSON.parse(await readFile(path, "utf8"));
   } catch {
     const reg = register(cv, ref, toGray(photo));
-    await mkdir(join("reports", "cache", track), { recursive: true });
+    await mkdir(join(process.env.REG_CACHE ?? join("reports", "cache"), track), { recursive: true });
     await writeFile(path, JSON.stringify(reg));
     return reg;
   }
-}
-
-/** Point inside a convex quad (either winding), or within `margin` px of its edges. */
-function insideQuad(q: Point[], x: number, y: number, margin: number): boolean {
-  const cross = q.map((p, i) => { const r = q[(i + 1) % q.length]; return (r.x - p.x) * (y - p.y) - (r.y - p.y) * (x - p.x); });
-  if (cross.every((c) => c >= 0) || cross.every((c) => c <= 0)) return true;
-  return q.some((p, i) => {
-    const r = q[(i + 1) % q.length], ex = r.x - p.x, ey = r.y - p.y;
-    const t = Math.max(0, Math.min(1, ((x - p.x) * ex + (y - p.y) * ey) / (ex * ex + ey * ey)));
-    return Math.hypot(x - p.x - t * ex, y - p.y - t * ey) <= margin;
-  });
 }

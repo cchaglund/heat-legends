@@ -65,10 +65,18 @@ Findings:
 - Result: close-up silver 5/13 → **10/13**; false detections empty-light-a 1.26 → 0.65/photo, empty-light-b 1.65 → 0.71, scan-light-c 0.96 → 0.30, scan-light-d 0.29 → 0.10. Coloured cars unchanged. Black close-ups still 1/5.
 - Caveat: `edge` grows with photo sharpness (close-ups are sharper than the empty sets). If silver misses on far shots, scale the threshold by `relativeSharpness`.
 
+**Speed + multi-view (2026-11-02, later):**
+- Registration: the coarse pass matches 2000 frame features against 4000 reference features; the refine pass matches only within 24px (`matchLocal`, grid buckets + JS popcount) and is the real check (`MIN_REFINE_INLIERS` 150, coarse may be as low as 10). Node: 4s → **0.6s/photo**, 200/204 registered (old 203). `npx tsx tools/compare-registration.ts` compares with the cache. The old cache is in `reports/cache-old/`.
+- Detection: 2.6s → **0.4s**. Most of it was OpenCV.js `Mat.data` being a getter (a new view per access) inside per-pixel loops: always hoist `const d = mat.data` (gotcha below). The offset field is now at 1/8 resolution; the reference gradient for `edge` is precomputed in the model.
+- Live mode: `track(cv, ref, frame, Hprev)` = local match only, around the previous H (radius `TRACK_PX` 72). 10 fps frames from the video (`reports/live/`, extracted locally): 0 lost, ~107ms/frame at 640px, ≤4.5px from a full registration.
+- Bench page `bench.html` (dev server): Chrome on the laptop → snapshot 0.8–1.7s, live tracking ~110ms/frame, lock-on ~250ms.
+- **Multi-view** (eval `MULTIVIEW=25 MULTIVIEW_WIN=2`: keep a detection if one of the 2 neighbouring photos sees the same colour within 25px): **false detections 0 in 98 empty photos**, with no recall loss. Close-ups: coloured 47/49, silver 11/13, black 1/5 (green 8/10, was 9/10 before the 1/8 offset field).
+- **D27 status:** registration ✓, coloured ✓ (96%), silver ✓ (85%, just), false positives ✓ (multi-view only), black best effort (1/5). The multi-view result assumes the app looks at several frames: see the open question in "Open items".
+
 **Earlier idea, now partly done:** stop tuning pixels and use the track.** A car can only stand on a space. Once M3 annotates the spaces, a blob counts only when it sits on a space, and only one car fits per spot. Most black/silver false blobs (verges, markings, glare streaks) are not on a space centre. Measure this on the fixtures as soon as `tracks/france.json` exists.
 
 ### Next actions (in order)
-1. ~~The user checks the France annotation~~ done. `npm run annotate` → http://localhost:4610 (the draft comes from `npx tsx tools/find-boundaries.ts france` → `reports/boundaries/france.json`, pre-filled with speeds 5/2/4/3 and the raceline on the right until the speed-4 corner). Open: corner #47's speed limit (rotated sign), the raceline sides after corner 4, laps. Save → `tracks/france.json` (validated by `deriveTrack`).
+1. **The user runs the bench on their phone:** `npm run dev`, then on the phone (same Wi-Fi) open `https://<laptop LAN IP>:5173/bench.html`, accept the self-signed certificate, tap "Run 5 fixture photos", then "Take a photo" of the board. Record the timings in this file. Targets: snapshot ≤ ~1.5s, live tracking ≤ ~150ms/frame. `npm run annotate` → http://localhost:4610 (the draft comes from `npx tsx tools/find-boundaries.ts france` → `reports/boundaries/france.json`, pre-filled with speeds 5/2/4/3 and the raceline on the right until the speed-4 corner). Open: corner #47's speed limit (rotated sign), the raceline sides after corner 4, laps. Save → `tracks/france.json` (validated by `deriveTrack`).
 2. Remaining false positives (~0.1–0.7/photo vs the D27 bar 0.05): look at the survivors with `FP_LOG`. Candidates: glare moves with the camera while a car doesn't, so the hybrid live mode (D15) can require a silver/black detection to stay put across frames; black needs its own cue (black close-ups 1/5).
 3. Optional black/silver pixel work: why the silver assignment still picks a wrong bright blob in 8/13 close-ups (regenerate blobs with `DETECT_REF=reports/ref/france-scan-light-d.png npm run vision:detect -- france closeup-light-d` and compare costs).
 4. Board scan is decided (D32–D34); build it in M4/M5 using `tools/build-own-reference.ts` as the algorithm.
@@ -101,11 +109,11 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - [x] Review page: `npm run review` → http://localhost:4600 (needs `npm run vision:detect -- france <set>` first for photos and consensus). Saves `fixtures/<track>/<set>/truth.json`.
 - [ ] User reviews `pos-a-light-a` and `pos-b-light-a` (`pos-b-light-b` has the same positions: copy its truth file)
 - [x] `npm run test:vision`: per-colour hit rate vs truth (or consensus) + false detections on empty sets; `DETECT_REF` selects the reference
-- [ ] Meet D27 on a fresh hold-out (the user's new close-up photos)
-- [ ] Registration speed-up (currently ~4s/photo on the laptop)
+- [x] Meet D27 on the close-ups (multi-view for false positives; black best effort)
+- [x] Registration speed-up (4s → 0.6s/photo in Node); detection 2.6s → 0.4s; live `track()` ~107ms/frame
 
 ### M1b — Phone benchmark
-- [ ] `/bench.html` + Worker running the pipeline, with timings per stage
+- [x] `/bench.html` + Worker running the pipeline, with timings per stage (incl. live lock-on + tracking)
 - [ ] Run on the user's phone (+ an older one). Compare with the targets in the plan.
 
 ### M2 — Rules engine ✅ (2026-11-01)
@@ -127,6 +135,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - [ ] Not started. See the plan.
 
 ### Open items needing the user
+- [ ] Run the bench on the phone (see Next actions 1).
+- [ ] Decide: snapshot mode = a short burst of frames (≈1s, the multi-view check) instead of one frame? Without it, false positives are ~0.1–0.8/photo.
 - [x] New fixtures delivered 2026-11-02: `closeup-light-c/d` (c = lamp off, d = lamp on), `scan-light-c/d` (video frames). See 05-development-and-testing.md.
 - [x] User reviewed the close-ups (2026-11-02). The review page now saves left-in-place guesses as confirmed (earlier saves were backfilled from the guesses shown).
 - [x] Decided D32: board scan = film, auto-pick sharp frames, coverage map.
@@ -142,11 +152,13 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - Use **chroma** (max−min), not HSV saturation, for "is this colourful" on dark pixels: saturation explodes near black.
 - Silver and black cars are two-tone in the data (body + wheels/shadow/highlights). Single-class rules miss them.
 - Fixture photos are shallow-angle and handheld, by design (D25). Cars are ~30–50px long in a 2048px photo.
+- OpenCV.js `mat.data` / `data32F` are **getters that create a new typed-array view on every access**. Never index them inside a per-pixel loop: hoist `const d = mat.data` first (this was 2s of a 2.6s detection).
 - **Names-only scores lie** for black/silver: a detection of the right colour somewhere isn't a hit. Use confirmed truth.
 - Registration takes ~4s/photo in Node. The detection report re-registers every photo, so a full run takes several minutes. Pass a set filter (`-- france pos-a`) while iterating.
 - `fixtures-raw/` holds the original photos **with GPS EXIF**. It's git-ignored; never commit it. `reports/` is git-ignored too: regenerate it.
 
 ## Session log
+- **2026-11-02 (g)**: Multi-view check (0 false positives); registration 6.6× faster, detection 6× faster; live `track()`; bench page. Waiting for the phone bench run.
 - **2026-11-02 (f)**: User confirmed tracks/france.json; on-space filter (black FPs −70%); silver edge cue (silver 10/13, FPs roughly halved).
 - **2026-11-02 (e)**: M3 started: automatic boundary draft for France (60 spaces, matches the printed distances) + annotator page.
 - **2026-11-02 (d)**: Quality gate metric (relative sharpness); blur is not the cause of black/silver false positives.
