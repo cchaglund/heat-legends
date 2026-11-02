@@ -10,6 +10,7 @@
 //    (silver). Sheen on the asphalt — the main noise — is none of these.
 // 4. Connected components → blobs → colour + class features.
 // 5. Joint one-to-one assignment of blobs to the participating colours.
+import { relativeSharpness } from "./quality";
 import type { CV } from "./cv";
 import type { H3 } from "./homography";
 
@@ -46,6 +47,8 @@ export type DetectResult = {
   mask: Uint8Array;
   /** Colour difference to the reference (reference space), track only. */
   diff: Float32Array;
+  /** Detail on the visible track relative to the reference (quality gate). */
+  sharpness: number;
 };
 
 export type ReferenceModel = {
@@ -166,7 +169,9 @@ export function detectCars(
   const blobs = findBlobs(cv, cleaned, normalized, diff, cls);
   cleaned.delete();
 
-  return { blobs, detections: assign(blobs, colors), normalized, mask, diff };
+  const onTrack = valid.map((v, i) => v && model.track[i] ? 1 : 0);
+  const sharpness = relativeSharpness(model.rgb, normalized, onTrack);
+  return { blobs, detections: assign(blobs, colors), normalized, mask, diff, sharpness };
 }
 
 // --- lighting -------------------------------------------------------------

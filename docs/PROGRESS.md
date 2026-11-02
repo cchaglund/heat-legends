@@ -57,14 +57,15 @@ Findings:
 - **Cross-lighting works:** a reference scanned with the lamp on detects the coloured cars on lamp-off close-ups (and the reverse).
 - Video frames include **motion blur** (e.g. scan-light-c/03); the quality gate (D19) should reject them.
 
+**Quality gate (2026-11-02):** `src/vision/quality.ts`. The plain Laplacian variance (`sharpness`) depends on the scene, so it doesn't separate blurry from sharp. `relativeSharpness` (detail of the warped frame ÷ detail of the reference, on the visible track) is returned by `detectCars` as `sharpness`. Measured (`SHARPNESS_LOG=<file> npm run test:vision`): close-ups 1.9–8.9; still photos 0.66–3.5; the visibly motion-blurred video frames ~0.5–0.8 (scan-light-c/14 0.50, scan-light-d/12 0.81). **Blur does not explain the black/silver false positives:** they're spread across all sharpness levels (rejecting <0.5 changes 1.11 → 1.09/photo). The gate is for the UX ("hold steady"); a threshold of ~0.6 is a starting point. Values above 1 are normal: a single photo has more noise than the median reference.
+
 **Likely way forward for black/silver: stop tuning pixels and use the track.** A car can only stand on a space. Once M3 annotates the spaces, a blob counts only when it sits on a space, and only one car fits per spot. Most black/silver false blobs (verges, markings, glare streaks) are not on a space centre. Measure this on the fixtures as soon as `tracks/france.json` exists.
 
 ### Next actions (in order)
-1. Quality gate: a blur metric (Laplacian variance) per frame, threshold from the fixtures. Rejected frames don't count as false positives; the app asks to hold steady.
-2. Pull M3's annotation forward far enough to get space positions for France, then test "blob must be on a space" against the black/silver false positives (see above). This is probably the big lever, not more pixel rules.
-3. Optional black/silver pixel work: why the silver assignment still picks a wrong bright blob in 8/13 close-ups (regenerate blobs with `DETECT_REF=reports/ref/france-scan-light-d.png npm run vision:detect -- france closeup-light-d` and compare costs).
-4. Board scan is decided (D32–D34); build it in M4/M5 using `tools/build-own-reference.ts` as the algorithm.
-5. → M1b phone benchmark.
+1. Pull M3's annotation forward far enough to get space positions for France, then test "blob must be on a space" against the black/silver false positives (see above). This is probably the big lever, not more pixel rules.
+2. Optional black/silver pixel work: why the silver assignment still picks a wrong bright blob in 8/13 close-ups (regenerate blobs with `DETECT_REF=reports/ref/france-scan-light-d.png npm run vision:detect -- france closeup-light-d` and compare costs).
+3. Board scan is decided (D32–D34); build it in M4/M5 using `tools/build-own-reference.ts` as the algorithm.
+4. → M1b phone benchmark. Pick the quality-gate threshold there (see the quality gate findings).
 
 Analysis helpers: `npm run vision:detect` writes `_<set>-blobs.json` (every blob with features and the assigned colour) next to the report.
 
@@ -137,6 +138,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - `fixtures-raw/` holds the original photos **with GPS EXIF**. It's git-ignored; never commit it. `reports/` is git-ignored too: regenerate it.
 
 ## Session log
+- **2026-11-02 (d)**: Quality gate metric (relative sharpness); blur is not the cause of black/silver false positives.
 - **2026-11-02 (c)**: User agreed D32–D34 (scan by filming, empty board after track choice, store + suggest rescan).
 - **2026-11-02 (b)**: User confirmed close-up positions; review save bug fixed + backfilled; real-position scoring exposed black/silver; paint-centred blobs (yellow 10/10); all-bright silver rule (5/13, more FPs). Next: blur gate, on-space prior.
 - **2026-11-02**: Close-up + video fixtures; prep keeps names and extracts video frames; per-photo review mode; close-up scoring; references built from video; blob hue-splitting (full spaces); black/silver size penalty. Coloured cars 45/45 on close-ups (names-only).

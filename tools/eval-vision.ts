@@ -35,6 +35,7 @@ const model = buildReferenceModel(cv, detectRef);
 console.log(`detection reference: ${process.env.DETECT_REF ?? "BGG scan"}\n`);
 
 const rows: string[] = [];
+const sharpLog: string[] = [];
 for (const set of (await readdir(join("fixtures", track))).sort()) {
   if (filters.length && !filters.some((f) => set.includes(f))) continue;
   const dir = join("fixtures", track, set);
@@ -45,7 +46,9 @@ for (const set of (await readdir(join("fixtures", track))).sort()) {
     const photo = await loadRgb(join(dir, file));
     const reg = await cachedRegister(set, file, photo);
     if (!reg.ok) failed++;
-    perPhoto.push(reg.ok ? detectCars(cv, model, photo, reg.H!, CAR_COLORS).detections : []);
+    const res = reg.ok ? detectCars(cv, model, photo, reg.H!, CAR_COLORS) : null;
+    perPhoto.push(res?.detections ?? []);
+    if (process.env.SHARPNESS_LOG) sharpLog.push(`${set}/${file}\t${res?.sharpness.toFixed(3) ?? "-"}\t${res?.detections.map((d) => d.color).join(",") ?? ""}`);
     names.push(file.replace(/\.jpg$/, ""));
   }
   const regNote = failed ? `   (${failed} registration failures)` : "";
@@ -90,6 +93,7 @@ for (const set of (await readdir(join("fixtures", track))).sort()) {
   rows.push(`${set.padEnd(16)} ${perPhoto.length} photos   ${truth.status.padEnd(9)}   ${cells.join("  ")}`);
 }
 console.log(rows.join("\n"));
+if (process.env.SHARPNESS_LOG) await writeFile(process.env.SHARPNESS_LOG, sharpLog.join("\n") + "\n");
 
 async function loadTruth(dir: string): Promise<Truth | null> {
   try {
