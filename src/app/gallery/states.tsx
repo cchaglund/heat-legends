@@ -195,7 +195,7 @@ export const STATES: UiState[] = [
   { id: "scan-camera-error", group: "Board scan", title: "Camera blocked", render: () => fullscreen(<ScanPreview phase="loading" blank cameraError="Permission denied" />) },
   { id: "scan-start", group: "Board scan", title: "Scanning: just started", render: () => fullscreen(<ScanPreview phase="scanning" coverage={coverage(0, 0)} frames={1} />) },
   { id: "scan-partial", group: "Board scan", title: "Scanning: half done", render: () => fullscreen(<ScanPreview phase="scanning" coverage={coverage(24, 6)} frames={14} />) },
-  { id: "scan-enough", group: "Board scan", title: "Scanning: enough", render: () => fullscreen(<ScanPreview phase="scanning" coverage={coverage(56, 4)} frames={31} />) },
+  { id: "scan-enough", group: "Board scan", title: "Scanning: enough (dialog)", render: () => fullscreen(<ScanPreview phase="scanning" coverage={coverage(56, 4)} frames={31} />) },
   { id: "scan-lost", group: "Board scan", title: "Scanning: board out of view", render: () => fullscreen(<ScanPreview phase="scanning" lost coverage={coverage(24, 6)} frames={14} />) },
   { id: "scan-saving", group: "Board scan", title: "Building the scan", render: () => fullscreen(<ScanPreview phase="saving" coverage={coverage(56, 4)} frames={31} />) },
   { id: "scan-error", group: "Board scan", title: "Error", render: () => fullscreen(<ScanPreview phase="error" error="no scan in progress" />) },
@@ -203,7 +203,7 @@ export const STATES: UiState[] = [
   // --- Race
   { id: "race-new", group: "Race", title: "Race started, round 0", render: withGame(fresh, () => <RaceScreen onLegend={noop} onEndRace={noop} />) },
   { id: "race-card", group: "Race", title: "Round 1, card revealed", render: withGame(cardShown, () => <RaceScreen onLegend={noop} onEndRace={noop} />) },
-  { id: "race-mid", group: "Race", title: "Round 2, Blue moved", note: "Move log, \"moved\" badge.", render: withGame(midRace, () => <RaceScreen onLegend={noop} onEndRace={noop} />) },
+  { id: "race-mid", group: "Race", title: "Round 2, Blue moved", note: "Tap the folds to open the card and the history.", render: withGame(midRace, () => <RaceScreen onLegend={noop} onEndRace={noop} />) },
   {
     id: "race-about",
     group: "Race",

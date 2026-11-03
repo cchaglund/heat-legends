@@ -90,7 +90,7 @@ Findings:
 **Earlier idea, now partly done:** stop tuning pixels and use the track.** A car can only stand on a space. Once M3 annotates the spaces, a blob counts only when it sits on a space, and only one car fits per spot. Most black/silver false blobs (verges, markings, glare streaks) are not on a space centre. Measure this on the fixtures as soon as `tracks/france.json` exists.
 
 ### Next actions (in order)
-1. **Waiting on the user:** annotated screenshots from `?gallery` with UI suggestions. Apply them, add any new states to the gallery.
+1. **Light changes (user: important).** Proposed to the user 2026-11-03: (a) automatic light compensation per sweep (robust per-channel colour fit of the scan to the current frame on track pixels), measured on the lamp-on/lamp-off videos; (b) a "the light has changed" check (track pixels still unlike the scan after compensation, or the Legend not found twice while the board is aligned) that offers a rescan or By hand. Open question for the user: how a mid-race rescan works with cars on the board. Gallery feedback round 1 is applied.
 2. Things known to be missing (pick by what the play-test shows): D20 [Wrong car] cycling; D19 quality-gate hints during the sweep ("hold steadier"); M6 polish (smoothed H, holding the last H through dropouts, an off-screen target arrow, D16); D34 "suggest a rescan" on unusual noise (now confirmed needed: a lighting change broke detection until a rescan); caching the built detection model so startup skips ~2 s; black detection (best effort, 1/5); the roles screen's drag (D31, optional).
 3. Tuning knobs once there is real phone data: `SWEEP_BASELINE` 100 ref px and `MIN_VIEWS` 4 (`MoveCamera.tsx`), `MIN_FRACTION` 0.6 / `MIN_BASELINE` 40 (`sweep.ts`), `SCAN_INTAKE_MS` 1000 (`vision.worker.ts`).
 4. Check the "Update available → Reload" prompt across two deploys (only testable on the deployed PWA).
@@ -189,6 +189,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - `fixtures-raw/` holds the original photos **with GPS EXIF**. It's git-ignored; never commit it. `reports/` is git-ignored too: regenerate it.
 
 ## Session log
+- **2026-11-03 (d)**: User feedback on the gallery: scan-complete dialog (#11); race screen: Legend buttons first, filled colour = not moved this round, dark = moved (#17); card and move history folded by default; no boxed placeholder at round 0 (#15).
 - **2026-11-03 (c)**: User's play-test: works and fast; a lighting change needed a rescan. Built the UI gallery (`?gallery`, 34 states) for the user's annotated feedback.
 - **2026-11-03 (b)**: D35 agreed. M4 app shell (subagent) + M5 sweep/scan/live arrow; sweep consensus with majority vote; on-phone scan needs polish + 1 frame/s; fake-camera browser tests pass in dev and production builds.
 - **2026-11-03**: Phone bench on the user's iPhone: snapshot ≤1.34s, tracking ≤96ms (targets met). Bench page now confirms each queued run.

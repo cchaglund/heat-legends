@@ -96,25 +96,29 @@ small { font-size: 13px; }
 .race-bar { display: flex; align-items: center; gap: 8px; }
 .race-bar .round { flex: 1; display: flex; align-items: baseline; gap: 8px; }
 .race-bar .round b { font-size: 34px; }
-.card-panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; }
-.card-panel p { margin: 0; }
-.card-panel table { width: 100%; border-collapse: collapse; font-size: 18px; }
-.card-panel th { font-size: 13px; color: var(--muted); font-weight: 500; text-align: right; }
-.card-panel td { padding: 4px 0; }
-.card-panel td + td { text-align: right; font-weight: 700; font-size: 22px; }
+.fold { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
+.fold summary { padding: 14px 12px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.fold[open] summary { color: var(--text); }
+.fold > :not(summary) { margin: 0 12px 12px; }
+.hint { margin: 0; text-align: center; font-size: 15px; }
+.card-table { width: calc(100% - 24px); border-collapse: collapse; font-size: 18px; }
+.card-table th { font-size: 13px; color: var(--muted); font-weight: 500; text-align: right; }
+.card-table td { padding: 4px 0; }
+.card-table td + td { text-align: right; font-weight: 700; font-size: 22px; }
 .legends { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+/* Not yet moved this round: filled with the car's colour. Moved: dark, coloured outline. */
 .legend-btn {
   min-height: 76px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; text-align: left;
-  background: var(--panel-2); color: var(--text); font: inherit; cursor: pointer;
-  border: 2px solid var(--car); border-radius: var(--radius); position: relative;
+  font: inherit; cursor: pointer; border: 2px solid var(--car); border-radius: var(--radius);
 }
 .legend-btn span { display: flex; flex-direction: column; min-width: 0; }
 .legend-btn b { font-size: 19px; }
-.legend-btn small { color: var(--muted); }
-.legend-btn em { position: absolute; top: 6px; right: 8px; font-size: 12px; font-style: normal; color: var(--muted); }
-.legend-btn.moved { opacity: 0.6; }
-.log ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
-.log li { background: var(--panel); border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; }
+.legend-btn.todo { background: var(--car); color: #111; }
+.legend-btn.todo small { color: #111; opacity: 0.75; }
+.legend-btn.moved { background: var(--panel); color: var(--car); }
+.legend-btn.moved small { color: var(--muted); }
+.log { padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.log li { background: var(--panel-2); border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; }
 .log-head .swatch { margin: 0 2px; }
 
 /* --- Tap mode: image fills the space between the bar and the panel. */

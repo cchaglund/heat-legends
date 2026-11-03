@@ -86,6 +86,8 @@ export function ScanBoardView(p: ScanBoardViewProps) {
   const { track, phase, coverage } = p;
   const info = trackById(track.id)!;
   const covered = coverage.length ? coverage.reduce((s, c) => s + c, 0) / coverage.length : 0;
+  const [keepGoing, setKeepGoing] = useState(false);
+  const done = phase === "scanning" && covered >= ENOUGH;
   return (
     <div class="cam">
       {p.background}
@@ -101,15 +103,23 @@ export function ScanBoardView(p: ScanBoardViewProps) {
         {phase === "scanning" && (
           <p class="cam-msg">
             {p.lost ? "Can't see the board: point at the track." : `${Math.round(covered * 100)}% of the track scanned · ${p.frames} frames`}
-            {covered >= ENOUGH && " · enough, tap Done"}
           </p>
         )}
         {phase === "saving" && <p class="cam-msg">Building the scan…</p>}
+        {done && keepGoing && <p class="cam-msg">Enough is scanned: tap Done when you're finished.</p>}
         <div class="row">
           <button class="btn" onClick={p.onCancel}>Cancel</button>
           <button class="btn primary" disabled={phase !== "scanning" || covered < MIN_TO_FINISH} onClick={p.onDone}>Done</button>
         </div>
       </div>
+      {done && !keepGoing && (
+        <div class="cam-dialog" role="dialog" aria-labelledby="scan-done">
+          <h2 id="scan-done">Scan complete</h2>
+          <p>Enough of the track is scanned. You can put the cars back on the board.</p>
+          <button class="btn primary wide big" onClick={p.onDone}>OK</button>
+          <button class="link" onClick={() => setKeepGoing(true)}>Keep scanning</button>
+        </div>
+      )}
     </div>
   );
 }

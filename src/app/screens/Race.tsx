@@ -39,61 +39,62 @@ export function RaceScreen({ onLegend, onEndRace }: Props) {
         <button class="btn icon" aria-label="Settings" onClick={() => setAbout(true)}>⋯</button>
       </header>
 
+      <section class="legends">
+        {legends.map((c) => {
+          const moved = movedThisRound.has(c);
+          return (
+            <button
+              key={c}
+              class={`legend-btn ${moved ? "moved" : "todo"}`}
+              style={{ "--car": c === "black" ? "#8a8f96" : CAR_HEX[c] }}
+              aria-label={`${carName(c)}${moved ? ", moved this round" : ""}`}
+              onClick={() => tap(c)}
+            >
+              {moved && <Swatch colour={c} size={28} />}
+              <span>
+                <b>{carName(c)}</b>
+                <small>{g.positions[c] ? label(g.positions[c]!.space) : "position unknown"}</small>
+              </span>
+            </button>
+          );
+        })}
+      </section>
+
       <button class="btn primary wide big" onClick={() => update(startNextRound)}>
         {round === 0 ? "Start round 1" : `Next round (${round + 1})`}
       </button>
 
-      <section class="card-panel">
-        {card ? (
-          <>
-            <h2>Card {card.id}</h2>
-            <table>
-              <thead>
-                <tr><th /><th>Top speed</th><th>Diamond</th></tr>
-              </thead>
-              <tbody>
-                {legends.map((c) => (
-                  <tr key={c}>
-                    <td><Swatch colour={c} size={16} /> {carName(c)}</td>
-                    <td>{card.cars[c][0]}</td>
-                    <td>{card.cars[c][1]}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </>
-        ) : (
-          <p class="muted">{round === 0 ? "Start the first round." : "The card is revealed on the first Legend tap this round."}</p>
-        )}
-      </section>
-
-      <section class="legends">
-        {legends.map((c) => (
-          <button
-            key={c}
-            class={`legend-btn ${movedThisRound.has(c) ? "moved" : ""}`}
-            style={{ "--car": c === "black" ? "#8a8f96" : CAR_HEX[c] }}
-            onClick={() => tap(c)}
-          >
-            <Swatch colour={c} size={28} />
-            <span>
-              <b>{carName(c)}</b>
-              <small>{g.positions[c] ? label(g.positions[c]!.space) : "position unknown"}</small>
-            </span>
-            {movedThisRound.has(c) && <em>moved</em>}
-          </button>
-        ))}
-      </section>
+      {card ? (
+        <details class="fold">
+          <summary>Legend card {card.id}</summary>
+          <table class="card-table">
+            <thead>
+              <tr><th /><th>Top speed</th><th>Diamond</th></tr>
+            </thead>
+            <tbody>
+              {legends.map((c) => (
+                <tr key={c}>
+                  <td><Swatch colour={c} size={16} /> {carName(c)}</td>
+                  <td>{card.cars[c][0]}</td>
+                  <td>{card.cars[c][1]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </details>
+      ) : (
+        round > 0 && <p class="muted hint">This round's card is drawn on the first Legend tap.</p>
+      )}
 
       {g.log.length > 0 && (
-        <section class="log">
-          <h2>Moves</h2>
-          <ol reversed>
+        <details class="fold">
+          <summary>Move history ({g.log.length})</summary>
+          <ol class="log" reversed>
             {[...g.log].reverse().map((e, i) => (
               <LogLine key={g.log.length - i} entry={e} label={label} />
             ))}
           </ol>
-        </section>
+        </details>
       )}
 
       {about && (
