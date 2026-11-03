@@ -77,7 +77,7 @@ Findings:
 **Earlier idea, now partly done:** stop tuning pixels and use the track.** A car can only stand on a space. Once M3 annotates the spaces, a blob counts only when it sits on a space, and only one car fits per spot. Most black/silver false blobs (verges, markings, glare streaks) are not on a space centre. Measure this on the fixtures as soon as `tracks/france.json` exists.
 
 ### Next actions (in order)
-1. **Waiting on the user:** (a) which cars were where in their 5 camera shots (bench output: `yellow@45, black@45, red@46, green@53, silver@55, blue@55` etc.); (b) the snapshot burst decision (Open items). Optional: an older phone.
+1. **Waiting on the user:** the snapshot capture decision (Open items). Camera shots from the phone bench (cars unmoved: yellow 45, red 46, green 53, silver 55, blue 55; black not on the board): every coloured detection is at the right space, cars missing from a shot were probably out of frame; one false `black@45` in 5 shots. No older phone available.
 2. Remaining false positives (~0.1–0.7/photo vs the D27 bar 0.05): look at the survivors with `FP_LOG`. Candidates: glare moves with the camera while a car doesn't, so the hybrid live mode (D15) can require a silver/black detection to stay put across frames; black needs its own cue (black close-ups 1/5).
 3. Optional black/silver pixel work: why the silver assignment still picks a wrong bright blob in 8/13 close-ups (regenerate blobs with `DETECT_REF=reports/ref/france-scan-light-d.png npm run vision:detect -- france closeup-light-d` and compare costs).
 4. Board scan is decided (D32–D34); build it in M4/M5 using `tools/build-own-reference.ts` as the algorithm.
@@ -116,7 +116,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 ### M1b — Phone benchmark
 - [x] `/bench.html` + Worker running the pipeline, with timings per stage (incl. live lock-on + tracking)
 - [x] Run on the user's phone (2026-11-03): snapshot 0.62–1.34s, tracking 70–96ms. Both targets met.
-- [ ] Optional: an older phone
+- [x] Older phone: none available
 
 ### M2 — Rules engine ✅ (2026-11-01)
 - [x] `src/engine/`: types, `deriveTrack` (annotation → spaces/corners, validates D28), loop arithmetic, `syntheticAnnotation` for tests
@@ -137,8 +137,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - [ ] Not started. See the plan.
 
 ### Open items needing the user
-- [ ] Say which cars were where in the 5 camera shots from the phone bench.
-- [ ] Decide: snapshot mode = a short burst of frames (≈1s, the multi-view check) instead of one frame? Without it, false positives are ~0.1–0.8/photo.
+- [ ] Decide: snapshot mode = a short slow sweep (the multi-view check needs viewpoint change; holding still likely gives near-identical glare) instead of one frame? Without it, false positives are ~0.1–0.8/photo.
 - [x] New fixtures delivered 2026-11-02: `closeup-light-c/d` (c = lamp off, d = lamp on), `scan-light-c/d` (video frames). See 05-development-and-testing.md.
 - [x] User reviewed the close-ups (2026-11-02). The review page now saves left-in-place guesses as confirmed (earlier saves were backfilled from the guesses shown).
 - [x] Decided D32: board scan = film, auto-pick sharp frames, coverage map.
