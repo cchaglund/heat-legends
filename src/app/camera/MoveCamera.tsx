@@ -2,6 +2,7 @@
 // only when views from different positions agree), the engine resolves the
 // move, then the camera keeps running with tracking only and the arrow is
 // drawn on the live picture. Tap mode stays one button away (D9).
+import type { ComponentChildren, Ref } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { positionAtPoint, resolveLegendMove, spaceLabel, spotCenter } from "../../engine";
 import type { Board, CarColor, LegendCard, LegendMove, Point, Track } from "../../engine";
@@ -30,8 +31,9 @@ const SWEEP_BASELINE = 100; // reference px the view centre must travel (≈ a h
 const MIN_VIEWS = 4;
 const MAX_SWEEP_MS = 8000;
 
-type Phase = "loading" | "sweep" | "notFound" | "live" | "error";
-type Found = { board: Board; move: LegendMove; targetSeen: boolean };
+export type Phase = "loading" | "sweep" | "notFound" | "live" | "error";
+export type Found = { board: Board; move: LegendMove; targetSeen: boolean };
+type Dot = { color: CarColor; x: number; y: number };
 
 export function MoveCamera({ track, legend, inPlay, card, onDone, onTapMode }: MoveCameraProps) {
   const info = trackById(track.id)!;
@@ -91,37 +93,60 @@ export function MoveCamera({ track, legend, inPlay, card, onDone, onTapMode }: M
   });
 
   /** Redraws the overlay for a frame aligned by H (video px → reference px). */
-  function draw(H: H3 | null, move: LegendMove | null, dots?: { color: CarColor; x: number; y: number }[]) {
+  function draw(H: H3 | null, move: LegendMove | null, dots?: Dot[]) {
     const c = canvas.current, v = video.current;
     if (!c || !v) return;
-    const dpr = window.devicePixelRatio || 1;
-    c.width = c.clientWidth * dpr;
-    c.height = c.clientHeight * dpr;
-    const ctx = c.getContext("2d")!;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, c.width, c.height);
-    if (!H) return;
-    const { toScreen } = coverTransform(v);
-    const Hinv = invert(H);
-    const screen = (p: Point) => toScreen(apply(Hinv, p));
-    for (const d of dots ?? []) {
-      const p = screen(d);
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 7, 0, 2 * Math.PI);
-      ctx.fillStyle = CAR_HEX[d.color];
-      ctx.strokeStyle = "#fff";
-      ctx.lineWidth = 2;
-      ctx.fill();
-      ctx.stroke();
-    }
-    if (move) drawArrow(ctx, track, move, screen);
+    const toScreen = coverTransform(v).toScreen;
+    const Hinv = H && invert(H);
+    drawOverlay(c, track, Hinv ? (p) => toScreen(apply(Hinv, p)) : null, move, dots);
   }
 
+  return (
+    <MoveCameraView
+      track={track}
+      legend={legend}
+      phase={phase}
+      progress={progress}
+      lost={lost}
+      found={found}
+      error={error}
+      cameraError={state.status === "error" ? state.message ?? "" : undefined}
+      background={<video ref={video} class="cam-video" playsInline muted />}
+      canvas={canvas}
+      onCancel={() => onDone(null)}
+      onSweepAgain={startSweep}
+      onTapMode={onTapMode}
+      onDone={() => found && onDone({ board: found.board, move: found.move })}
+    />
+  );
+}
+
+export type MoveCameraViewProps = {
+  track: Track;
+  legend: CarColor;
+  phase: Phase;
+  progress: number;
+  lost: boolean;
+  found: Found | null;
+  error: string;
+  cameraError?: string;
+  /** The camera picture (a <video>; a still image in the UI gallery). */
+  background: ComponentChildren;
+  canvas: Ref<HTMLCanvasElement>;
+  onCancel: () => void;
+  onSweepAgain: () => void;
+  onTapMode: () => void;
+  onDone: () => void;
+};
+
+/** The screen itself, without camera or worker, so every state can be shown on its own. */
+export function MoveCameraView(p: MoveCameraViewProps) {
+  const { track, legend, phase, found } = p;
   const move = found?.move;
   return (
     <div class="cam">
-      <video ref={video} class="cam-video" playsInline muted />
-      <canvas ref={canvas} class="cam-overlay" />
+      {p.background}
+      <canvas ref={p.canvas} class="cam-overlay" />
       <div class="cam-top">
         <b style={{ color: CAR_HEX[legend] }}>{carName(legend)}</b>
         {phase === "sweep" && <span>Point at {carName(legend)} and move the phone slowly sideways, about a hand's width.</span>}
@@ -133,13 +158,13 @@ export function MoveCamera({ track, legend, inPlay, card, onDone, onTapMode }: M
         )}
       </div>
       <div class="cam-bottom">
-        {state.status === "error" && <p class="cam-msg">Camera: {state.message}</p>}
-        {phase === "loading" && state.status !== "error" && <p class="cam-msg">Preparing… (the first time takes a while)</p>}
-        {phase === "error" && <p class="cam-msg">Something went wrong: {error}</p>}
+        {p.cameraError !== undefined && <p class="cam-msg">Camera: {p.cameraError}</p>}
+        {phase === "loading" && p.cameraError === undefined && <p class="cam-msg">Preparing… (the first time takes a while)</p>}
+        {phase === "error" && <p class="cam-msg">Something went wrong: {p.error}</p>}
         {phase === "sweep" && (
           <>
-            <div class="cam-progress"><div style={{ width: `${Math.round(progress * 100)}%` }} /></div>
-            {lost && <p class="cam-msg">Can't see the board: point at the track.</p>}
+            <div class="cam-progress"><div style={{ width: `${Math.round(p.progress * 100)}%` }} /></div>
+            {p.lost && <p class="cam-msg">Can't see the board: point at the track.</p>}
           </>
         )}
         {phase === "notFound" && <p class="cam-msg">Couldn't find {carName(legend)}. Sweep again over it, or place it by hand.</p>}
@@ -149,20 +174,40 @@ export function MoveCamera({ track, legend, inPlay, card, onDone, onTapMode }: M
             {!found.targetSeen && (
               <p class="cam-msg warn">I couldn't see the target space. If a car is there, {carName(legend)} stops earlier: check it.</p>
             )}
-            {lost && <p class="cam-msg">Point the camera at the board to see the arrow.</p>}
+            {p.lost && <p class="cam-msg">Point the camera at the board to see the arrow.</p>}
           </>
         )}
         <div class="row">
-          <button class="btn" onClick={() => onDone(null)}>Cancel</button>
-          {(phase === "notFound" || phase === "live") && <button class="btn" onClick={startSweep}>Sweep again</button>}
-          <button class="btn" onClick={onTapMode}>By hand</button>
-          {phase === "live" && found && (
-            <button class="btn primary" onClick={() => onDone({ board: found.board, move: found.move })}>Done</button>
-          )}
+          <button class="btn" onClick={p.onCancel}>Cancel</button>
+          {(phase === "notFound" || phase === "live") && <button class="btn" onClick={p.onSweepAgain}>Sweep again</button>}
+          <button class="btn" onClick={p.onTapMode}>By hand</button>
+          {phase === "live" && found && <button class="btn primary" onClick={p.onDone}>Done</button>}
         </div>
       </div>
     </div>
   );
+}
+
+/** Clears the overlay canvas and draws the detection dots and the move arrow; `screen` maps reference px → CSS px (null: board not in view). */
+export function drawOverlay(c: HTMLCanvasElement, track: Track, screen: ((p: Point) => Point) | null, move: LegendMove | null, dots?: Dot[]) {
+  const dpr = window.devicePixelRatio || 1;
+  c.width = c.clientWidth * dpr;
+  c.height = c.clientHeight * dpr;
+  const ctx = c.getContext("2d")!;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, c.width, c.height);
+  if (!screen) return;
+  for (const d of dots ?? []) {
+    const p = screen(d);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 7, 0, 2 * Math.PI);
+    ctx.fillStyle = CAR_HEX[d.color];
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 2;
+    ctx.fill();
+    ctx.stroke();
+  }
+  if (move) drawArrow(ctx, track, move, screen);
 }
 
 /** Cars confirmed by the sweep → board → the Legend's move; null while the Legend isn't confirmed. */

@@ -1,0 +1,11 @@
+.gallery { padding: 24px; }
+.gallery section { margin-top: 32px; }
+.gallery-grid { display: flex; flex-wrap: wrap; gap: 32px; }
+.gallery figure { margin: 0; display: flex; flex-direction: column; gap: 8px; width: 390px; }
+.gallery figcaption { display: flex; flex-direction: column; gap: 2px; min-height: 64px; }
+.gallery figcaption a { color: var(--muted); font-size: 13px; }
+.gallery iframe { border: 1px solid var(--line); border-radius: 20px; background: var(--bg); }
+@media (max-width: 440px) {
+  .gallery { padding: 16px; }
+  .gallery figure, .gallery iframe { width: 100%; }
+}

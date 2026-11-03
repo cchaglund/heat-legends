@@ -2,6 +2,7 @@
 // sharp and aligned goes into the scan, and a small map of the track fills
 // in as spaces get enough sharp views. Done builds the reference on the
 // phone and stores it for this track.
+import type { ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import type { Track } from "../../engine";
 import { trackById } from "../tracks";
@@ -17,7 +18,7 @@ const MIN_TO_FINISH = 0.3;
 export function ScanBoard({ track, onDone, onCancel }: ScanBoardProps) {
   const info = trackById(track.id)!;
   const { video, state } = useCamera();
-  const [phase, setPhase] = useState<"loading" | "scanning" | "saving" | "error">("loading");
+  const [phase, setPhase] = useState<ScanPhase>("loading");
   const [error, setError] = useState("");
   const [coverage, setCoverage] = useState<number[]>([]);
   const [lost, setLost] = useState(false);
@@ -38,8 +39,6 @@ export function ScanBoard({ track, onDone, onCancel }: ScanBoardProps) {
     if (r.used) setFrames((n) => n + 1);
   });
 
-  const covered = coverage.length ? coverage.reduce((s, c) => s + c, 0) / coverage.length : 0;
-
   async function finish() {
     setPhase("saving");
     try {
@@ -53,27 +52,62 @@ export function ScanBoard({ track, onDone, onCancel }: ScanBoardProps) {
   }
 
   return (
+    <ScanBoardView
+      track={track}
+      phase={phase}
+      coverage={coverage}
+      lost={lost}
+      frames={frames}
+      error={error}
+      cameraError={state.status === "error" ? state.message ?? "" : undefined}
+      background={<video ref={video} class="cam-video" playsInline muted />}
+      onCancel={onCancel}
+      onDone={finish}
+    />
+  );
+}
+
+export type ScanPhase = "loading" | "scanning" | "saving" | "error";
+export type ScanBoardViewProps = {
+  track: Track;
+  phase: ScanPhase;
+  coverage: number[];
+  lost: boolean;
+  frames: number;
+  error: string;
+  cameraError?: string;
+  background: ComponentChildren;
+  onCancel: () => void;
+  onDone: () => void;
+};
+
+/** The screen itself, without camera or worker, so every state can be shown on its own. */
+export function ScanBoardView(p: ScanBoardViewProps) {
+  const { track, phase, coverage } = p;
+  const info = trackById(track.id)!;
+  const covered = coverage.length ? coverage.reduce((s, c) => s + c, 0) / coverage.length : 0;
+  return (
     <div class="cam">
-      <video ref={video} class="cam-video" playsInline muted />
+      {p.background}
       <div class="cam-top">
         <b>Scan the empty board</b>
         <span>Remove all cars. Film the whole track slowly from close up, a little from each side (about half a minute).</span>
       </div>
       <TrackMap track={track} width={info.width} height={info.height} coverage={coverage} />
       <div class="cam-bottom">
-        {state.status === "error" && <p class="cam-msg">Camera: {state.message}</p>}
-        {phase === "loading" && state.status !== "error" && <p class="cam-msg">Preparing… (the first time takes a while)</p>}
-        {phase === "error" && <p class="cam-msg">Something went wrong: {error}</p>}
+        {p.cameraError !== undefined && <p class="cam-msg">Camera: {p.cameraError}</p>}
+        {phase === "loading" && p.cameraError === undefined && <p class="cam-msg">Preparing… (the first time takes a while)</p>}
+        {phase === "error" && <p class="cam-msg">Something went wrong: {p.error}</p>}
         {phase === "scanning" && (
           <p class="cam-msg">
-            {lost ? "Can't see the board: point at the track." : `${Math.round(covered * 100)}% of the track scanned · ${frames} frames`}
+            {p.lost ? "Can't see the board: point at the track." : `${Math.round(covered * 100)}% of the track scanned · ${p.frames} frames`}
             {covered >= ENOUGH && " · enough, tap Done"}
           </p>
         )}
         {phase === "saving" && <p class="cam-msg">Building the scan…</p>}
         <div class="row">
-          <button class="btn" onClick={onCancel}>Cancel</button>
-          <button class="btn primary" disabled={phase !== "scanning" || covered < MIN_TO_FINISH} onClick={finish}>Done</button>
+          <button class="btn" onClick={p.onCancel}>Cancel</button>
+          <button class="btn primary" disabled={phase !== "scanning" || covered < MIN_TO_FINISH} onClick={p.onDone}>Done</button>
         </div>
       </div>
     </div>

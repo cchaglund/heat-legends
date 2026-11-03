@@ -7,7 +7,11 @@
 
 ## Current focus
 
-**2026-11-03: the whole flow is built (M4 + M5 per D35); waiting for the user's first real game test on the phone.** App: https://cchaglund.github.io/heat-legends/ (or `npm run dev` → `https://<LAN IP>:5173/`). Flow: France → Scan board (film the empty board ~30 s; map fills; Done) → roles → race → tap a Legend → sweep sideways over it → live arrow → Done. "By hand" = tap mode.
+**2026-11-03: first real play-test on the phone went well ("works great", fast). Waiting for the user's annotated screenshots from the UI gallery (`?gallery`).** One finding: after a lighting change the camera barely worked until the user rescanned the board, so the stored scan is tied to the lighting it was made in (see the gotcha; makes D34's "suggest a rescan" more important).
+
+**UI gallery:** `/?gallery` (deployed: https://cchaglund.github.io/heat-legends/?gallery) shows all 34 screen states in 390×844 iframes; `/?state=<id>` renders one state alone. States are in `src/app/gallery/states.tsx` (real components with made-up data; camera screens use the printed board as a still picture). For this the camera screens were split into a container and a view (`MoveCameraView`, `ScanBoardView`, `drawOverlay`), and a few screens take an optional starting state (`StartScreen saved`, `BoardScreen scanDate`, `RolesScreen initial`, `TapMode initial`, `UpdateBannerView`). In `?state` mode storage writes are disabled, so a tap there can't overwrite the real saved race. Add a state there when adding a screen state.
+
+**Earlier on 2026-11-03: the whole flow is built (M4 + M5 per D35).** App: https://cchaglund.github.io/heat-legends/ (or `npm run dev` → `https://<LAN IP>:5173/`). Flow: France → Scan board (film the empty board ~30 s; map fills; Done) → roles → race → tap a Legend → sweep sideways over it → live arrow → Done. "By hand" = tap mode.
 
 **Sweep + scan results (2026-11-03):**
 - Sweep consensus `src/vision/sweep.ts` = a pair of views ≥40 ref px apart agree **and** ≥60% of the views showing the spot see the car. On the 10 fps empty-board videos (`npx tsx tools/sweep-eval.ts`, detection reference = the *other* video's scan): 0 false cars in 44 sweeps (lamp off), 1–2 in 39 (lamp on, a persistent silver glare). The pair rule alone: ~0.3 per sweep. Recall on close-up groups (`npx tsx tools/sweep-recall.ts`): 12/12 named cars.
@@ -86,8 +90,8 @@ Findings:
 **Earlier idea, now partly done:** stop tuning pixels and use the track.** A car can only stand on a space. Once M3 annotates the spaces, a blob counts only when it sits on a space, and only one car fits per spot. Most black/silver false blobs (verges, markings, glare streaks) are not on a space centre. Measure this on the fixtures as soon as `tracks/france.json` exists.
 
 ### Next actions (in order)
-1. **Waiting on the user:** play-test on the phone (scan, then a few Legend moves) and report what goes wrong: sweep too slow or never finishes, wrong cars, arrow jitter or drift, the startup time.
-2. Things known to be missing (pick by what the play-test shows): D20 [Wrong car] cycling; D19 quality-gate hints during the sweep ("hold steadier"); M6 polish (smoothed H, holding the last H through dropouts, an off-screen target arrow, D16); D34 "suggest a rescan" on unusual noise; caching the built detection model so startup skips ~2 s; black detection (best effort, 1/5); the roles screen's drag (D31, optional).
+1. **Waiting on the user:** annotated screenshots from `?gallery` with UI suggestions. Apply them, add any new states to the gallery.
+2. Things known to be missing (pick by what the play-test shows): D20 [Wrong car] cycling; D19 quality-gate hints during the sweep ("hold steadier"); M6 polish (smoothed H, holding the last H through dropouts, an off-screen target arrow, D16); D34 "suggest a rescan" on unusual noise (now confirmed needed: a lighting change broke detection until a rescan); caching the built detection model so startup skips ~2 s; black detection (best effort, 1/5); the roles screen's drag (D31, optional).
 3. Tuning knobs once there is real phone data: `SWEEP_BASELINE` 100 ref px and `MIN_VIEWS` 4 (`MoveCamera.tsx`), `MIN_FRACTION` 0.6 / `MIN_BASELINE` 40 (`sweep.ts`), `SCAN_INTAKE_MS` 1000 (`vision.worker.ts`).
 4. Check the "Update available → Reload" prompt across two deploys (only testable on the deployed PWA).
 
@@ -168,6 +172,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - [x] Decided D34: store scans, suggest a rescan on unusual noise.
 
 ## Findings & gotchas (read before touching vision code)
+- **The stored scan is tied to the lighting it was made in.** In the user's play-test (2026-11-03) detection nearly stopped working after the lighting changed, and a rescan fixed it at once. Expected: detection compares against the scanned board's colours. Rescan when the light changes; D34's rescan suggestion should catch this.
 - **Testing camera screens on the laptop:** Chrome with `--use-fake-ui-for-media-stream --use-fake-device-for-media-stream --use-file-for-fake-video-capture=<file>.y4m` (playwright-cli `--config` with `browser.launchOptions.args`). Make the y4m with ffmpeg (e.g. a `crop` that pans over a fixture photo); playwright-cli screenshots must be saved under the repo (`.playwright-cli/`, git-ignored). The first worker load in dev can trigger a Vite dependency re-optimisation and a page reload: just retry.
 - **Fast registration (`register`) is up to ~25px off on some frames.** Fine for detection; not for the board scan's median, which is why scan frames get a `track(…, 12000, 24)` polish pass.
 - **OpenCV.js (`@techstark/opencv-js`)** only has **ORB** for features: no AKAZE/SIFT/ArUco. Load it via `loadCv()` in `src/vision/cv.ts`.
@@ -184,6 +189,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - `fixtures-raw/` holds the original photos **with GPS EXIF**. It's git-ignored; never commit it. `reports/` is git-ignored too: regenerate it.
 
 ## Session log
+- **2026-11-03 (c)**: User's play-test: works and fast; a lighting change needed a rescan. Built the UI gallery (`?gallery`, 34 states) for the user's annotated feedback.
 - **2026-11-03 (b)**: D35 agreed. M4 app shell (subagent) + M5 sweep/scan/live arrow; sweep consensus with majority vote; on-phone scan needs polish + 1 frame/s; fake-camera browser tests pass in dev and production builds.
 - **2026-11-03**: Phone bench on the user's iPhone: snapshot ≤1.34s, tracking ≤96ms (targets met). Bench page now confirms each queued run.
 - **2026-11-02 (g)**: Multi-view check (0 false positives); registration 6.6× faster, detection 6× faster; live `track()`; bench page. Waiting for the phone bench run.

@@ -3,7 +3,7 @@
 import { useState } from "preact/hooks";
 import { CAR_COLORS } from "../../engine";
 import { canStart, cycleRole, newGame } from "../game";
-import type { GameState, Role } from "../game";
+import type { GameState, Role, Roles } from "../game";
 import { carName } from "../colours";
 import { lastRoles, rememberRoles } from "../store";
 import { LEGEND_CARDS } from "../tracks";
@@ -15,10 +15,10 @@ const AREAS: Array<{ role: Role; title: string }> = [
   { role: "out", title: "Not in play" },
 ];
 
-type Props = { trackId: string; onStart: (g: GameState) => void; onBack: () => void };
+type Props = { trackId: string; onStart: (g: GameState) => void; onBack: () => void; initial?: Roles };
 
-export function RolesScreen({ trackId, onStart, onBack }: Props) {
-  const [roles, setRoles] = useState(lastRoles);
+export function RolesScreen({ trackId, onStart, onBack, initial }: Props) {
+  const [roles, setRoles] = useState(initial ?? lastRoles);
   const start = () => {
     rememberRoles(roles);
     onStart(newGame(trackId, roles, LEGEND_CARDS));

@@ -17,24 +17,32 @@ type Props = {
   legend: CarColor;
   onDone: (move: LegendMove, board: Board) => void;
   onCancel: () => void;
+  /** Starting state instead of the defaults (UI gallery). */
+  initial?: { zoom?: number; selected?: CarColor; move?: LegendMove; hint?: string };
 };
 
 const ZOOMS = [1, 1.5, 2.5, 4];
 const same = (p: Position, q: Position) => p.space === q.space && p.spot === q.spot;
+function midpoint(track: TrackInfo["track"], m: LegendMove) {
+  const [a, b] = [spotCenter(track, m.from), spotCenter(track, m.to)];
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+}
 
-export function TapMode({ info, legend, onDone, onCancel }: Props) {
+export function TapMode({ info, legend, onDone, onCancel, initial = {} }: Props) {
   const g = game.value!;
   const { track } = info;
   const inPlay = inPlayOf(g.roles);
   const [board, setBoard] = useState<Board>(() =>
     Object.fromEntries(inPlay.filter((c) => g.positions[c]).map((c) => [c, g.positions[c]])),
   );
-  const [selected, setSelected] = useState<CarColor>(legend);
-  const [move, setMove] = useState<LegendMove | null>(null);
-  const [hint, setHint] = useState("");
-  const [zoom, setZoom] = useState(g.positions[legend] ? 2 : 0);
+  const [selected, setSelected] = useState<CarColor>(initial.selected ?? legend);
+  const [move, setMove] = useState<LegendMove | null>(initial.move ?? null);
+  const [hint, setHint] = useState(initial.hint ?? "");
+  const [zoom, setZoom] = useState(initial.zoom ?? (g.positions[legend] ? 2 : 0));
   const scroller = useRef<HTMLDivElement>(null);
-  const focus = useRef<{ x: number; y: number } | null>(g.positions[legend] ? spotCenter(track, g.positions[legend]!) : null);
+  const focus = useRef<{ x: number; y: number } | null>(
+    initial.move ? midpoint(track, initial.move) : g.positions[legend] ? spotCenter(track, g.positions[legend]!) : null,
+  );
 
   // Centre a reference point after a zoom change or when the move is shown.
   useLayoutEffect(() => {
@@ -87,8 +95,7 @@ export function TapMode({ info, legend, onDone, onCancel }: Props) {
   const show = () => {
     try {
       const m = resolveLegendMove(track, board, legend, g.deck.card!);
-      const [a, b] = [spotCenter(track, m.from), spotCenter(track, m.to)];
-      focus.current = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }; // bring the whole arrow into view
+      focus.current = midpoint(track, m); // bring the whole arrow into view
       setMove(m);
     } catch (err) {
       setHint(String(err));

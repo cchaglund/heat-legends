@@ -8,11 +8,15 @@ export function UpdateBanner() {
     updateServiceWorker,
   } = useRegisterSW();
   if (!needRefresh) return null;
+  return <UpdateBannerView onLater={() => setNeedRefresh(false)} onReload={() => updateServiceWorker(true)} />;
+}
+
+export function UpdateBannerView({ onLater, onReload }: { onLater: () => void; onReload: () => void }) {
   return (
     <div class="update-banner" role="status">
       <span>Update available</span>
-      <button class="btn small" onClick={() => setNeedRefresh(false)}>Later</button>
-      <button class="btn small primary" onClick={() => updateServiceWorker(true)}>Reload</button>
+      <button class="btn small" onClick={onLater}>Later</button>
+      <button class="btn small primary" onClick={onReload}>Reload</button>
     </div>
   );
 }

@@ -1,10 +1,13 @@
 // D23: a saved race is offered first; a new race throws it away only once the
 // new one actually starts.
+import type { GameState } from "../game";
 import { savedGame } from "../store";
 import { trackById } from "../tracks";
 
-export function StartScreen({ onResume, onNew }: { onResume: () => void; onNew: () => void }) {
-  const g = savedGame!;
+type Props = { onResume: () => void; onNew: () => void; saved?: GameState };
+
+export function StartScreen({ onResume, onNew, saved = savedGame! }: Props) {
+  const g = saved;
   return (
     <main class="screen center">
       <h1>Heat Legends</h1>

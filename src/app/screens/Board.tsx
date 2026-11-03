@@ -4,11 +4,19 @@ import { useEffect, useState } from "preact/hooks";
 import { storedScanDate } from "../camera";
 import { trackById } from "../tracks";
 
-type Props = { trackId: string; onScan: () => void; onContinue: () => void; onBack: () => void };
+type Props = {
+  trackId: string;
+  onScan: () => void;
+  onContinue: () => void;
+  onBack: () => void;
+  /** The stored scan's date, given instead of looked up (UI gallery). */
+  scanDate?: Date | null;
+};
 
-export function BoardScreen({ trackId, onScan, onContinue, onBack }: Props) {
-  const [scanned, setScanned] = useState<Date | null | undefined>(undefined);
+export function BoardScreen({ trackId, onScan, onContinue, onBack, scanDate }: Props) {
+  const [scanned, setScanned] = useState<Date | null | undefined>(scanDate);
   useEffect(() => {
+    if (scanDate !== undefined) return;
     let live = true;
     storedScanDate(trackId)
       .then((d) => live && setScanned(d))
