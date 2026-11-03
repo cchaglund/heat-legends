@@ -48,11 +48,17 @@ function next() {
   worker.postMessage({ kind: "run", ...job } satisfies RunMsg);
 }
 
+// Each queued photo is acknowledged at once: a run takes seconds, and without
+// feedback a second tap queues the set again.
 $("fixtures").onclick = async () => {
+  log(`<p class="queued">Queued ${FIXTURES.length} fixture photos (${queue.length + (busy ? 1 : 0)} ahead).</p>`);
   for (const url of FIXTURES) queue.push({ name: url.split("/").pop()!, file: await (await fetch(url)).blob() });
   next();
 };
 $("camera").onchange = (e) => {
   const f = (e.target as HTMLInputElement).files?.[0];
-  if (f) { queue.push({ name: `camera ${new Date().toLocaleTimeString()}`, file: f }); next(); }
+  if (!f) return;
+  log(`<p class="queued">Queued camera photo (${queue.length + (busy ? 1 : 0)} ahead).</p>`);
+  queue.push({ name: `camera ${new Date().toLocaleTimeString()}`, file: f });
+  next();
 };
