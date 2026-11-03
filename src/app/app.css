@@ -6,7 +6,7 @@
   --line: #3a3f45;
   --text: #eceef0;
   --muted: #9aa1a9;
-  --accent: #e0352b;
+  --accent: #a3182f; /* crimson: distinct from the red car (#e0352b) */
   --accent-2: #f4c430;
   --radius: 12px;
   --tap: 52px;
@@ -154,3 +154,4 @@ small { font-size: 13px; }
 .update-banner .btn { background: #111; color: #fff; border-color: #111; }
 .camera-stub { padding: 24px 16px; display: flex; flex-direction: column; gap: 12px; }
 .camera-stub button { min-height: var(--tap); font: inherit; border-radius: var(--radius); }
+.race-divider { border: 0; border-top: 1px solid var(--line); margin: 6px 0; }

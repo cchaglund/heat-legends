@@ -35,7 +35,7 @@ function seeded(seed: number) {
   };
 }
 
-const roles: Roles = { red: "human", blue: "legend", green: "human", yellow: "legend", black: "out", silver: "human" };
+const roles: Roles = { red: "legend", blue: "legend", green: "human", yellow: "legend", black: "out", silver: "human" };
 const at = (space: number, spot: 0 | 1 = 0): Position => ({ space, spot });
 
 const fresh = newGame(info.id, roles, LEGEND_CARDS, seeded(1));

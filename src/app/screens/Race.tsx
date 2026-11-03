@@ -60,6 +60,8 @@ export function RaceScreen({ onLegend, onEndRace }: Props) {
         })}
       </section>
 
+      <hr class="race-divider" />
+
       <button class="btn primary wide big" onClick={() => update(startNextRound)}>
         {round === 0 ? "Start round 1" : `Next round (${round + 1})`}
       </button>
