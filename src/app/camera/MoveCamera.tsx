@@ -25,17 +25,24 @@ export type MoveCameraProps = {
   onDone: (result: MoveResult | null) => void;
   /** The user asked to place the Legend by hand instead (tap mode, D9). */
   onTapMode: () => void;
+  /** The user accepted the rescan suggestion (D36). */
+  onRescan: () => void;
 };
 
 const SWEEP_BASELINE = 100; // reference px the view centre must travel (≈ a hand's width at close range)
 const MIN_VIEWS = 4;
 const MAX_SWEEP_MS = 8000;
+// D36: after this many sweeps in a row that saw the board but not the Legend,
+// suggest a rescan: the light has most likely changed since the scan.
+const MISSES_BEFORE_RESCAN = 2;
+let missesInARow = 0; // across camera screens: cancelling and retrying still counts
+export const resetSweepMisses = () => (missesInARow = 0);
 
 export type Phase = "loading" | "sweep" | "notFound" | "live" | "error";
 export type Found = { board: Board; move: LegendMove; targetSeen: boolean };
 type Dot = { color: CarColor; x: number; y: number };
 
-export function MoveCamera({ track, legend, inPlay, card, onDone, onTapMode }: MoveCameraProps) {
+export function MoveCamera({ track, legend, inPlay, card, onDone, onTapMode, onRescan }: MoveCameraProps) {
   const info = trackById(track.id)!;
   const { video, state } = useCamera();
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -74,17 +81,23 @@ export function MoveCamera({ track, legend, inPlay, card, onDone, onTapMode }: M
     const p = Math.min(1, sweepBaseline(vs) / SWEEP_BASELINE) * Math.min(1, vs.length / MIN_VIEWS);
     setProgress(p);
     if (p < 1) {
-      if (performance.now() - sweepStart.current > MAX_SWEEP_MS) setPhase("notFound");
+      if (performance.now() - sweepStart.current > MAX_SWEEP_MS) notFound();
       return;
     }
     const result = resolve(track, legend, card, vs);
     if (result) {
+      resetSweepMisses();
       setFound(result);
       setPhase("live");
     } else if (performance.now() - sweepStart.current > MAX_SWEEP_MS) {
-      setPhase("notFound");
+      notFound();
     }
   });
+
+  function notFound() {
+    missesInARow++;
+    setPhase("notFound");
+  }
 
   useFrameLoop(video, phase === "live", async (frame) => {
     const r = await processFrame("live", frame);
@@ -116,6 +129,8 @@ export function MoveCamera({ track, legend, inPlay, card, onDone, onTapMode }: M
       onCancel={() => onDone(null)}
       onSweepAgain={startSweep}
       onTapMode={onTapMode}
+      suggestRescan={missesInARow >= MISSES_BEFORE_RESCAN}
+      onRescan={onRescan}
       onDone={() => found && onDone({ board: found.board, move: found.move })}
     />
   );
@@ -136,6 +151,9 @@ export type MoveCameraViewProps = {
   onCancel: () => void;
   onSweepAgain: () => void;
   onTapMode: () => void;
+  /** Shown when the Legend wasn't found: offer a rescan instead of only "sweep again" (D36). */
+  suggestRescan?: boolean;
+  onRescan: () => void;
   onDone: () => void;
 };
 
@@ -167,7 +185,13 @@ export function MoveCameraView(p: MoveCameraViewProps) {
             {p.lost && <p class="cam-msg">Can't see the board: point at the track.</p>}
           </>
         )}
-        {phase === "notFound" && <p class="cam-msg">Couldn't find {carName(legend)}. Sweep again over it, or place it by hand.</p>}
+        {phase === "notFound" && !p.suggestRescan && <p class="cam-msg">Couldn't find {carName(legend)}. Sweep again over it, or place it by hand.</p>}
+        {phase === "notFound" && p.suggestRescan && (
+          <p class="cam-msg warn">
+            Still can't find {carName(legend)}. If the light has changed since the board was scanned, a rescan usually fixes it. The cars can
+            stay on the board.
+          </p>
+        )}
         {phase === "live" && found && (
           <>
             <p class="cam-msg">{found.move.reason}</p>
@@ -182,6 +206,7 @@ export function MoveCameraView(p: MoveCameraViewProps) {
           {(phase === "notFound" || phase === "live") && <button class="btn" onClick={p.onSweepAgain}>Sweep again</button>}
           <button class="btn" onClick={p.onTapMode}>By hand</button>
           {phase === "live" && found && <button class="btn primary" onClick={p.onDone}>Done</button>}
+          {phase === "notFound" && p.suggestRescan && <button class="btn primary" onClick={p.onRescan}>Rescan board</button>}
         </div>
       </div>
     </div>

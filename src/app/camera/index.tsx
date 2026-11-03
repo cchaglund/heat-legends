@@ -4,7 +4,7 @@
 import "./camera.css";
 import { loadScan } from "./scanStore";
 
-export { MoveCamera, MoveCameraView, drawOverlay, type Found, type MoveCameraProps, type Phase, type MoveResult } from "./MoveCamera";
+export { MoveCamera, MoveCameraView, resetSweepMisses, drawOverlay, type Found, type MoveCameraProps, type Phase, type MoveResult } from "./MoveCamera";
 export { ScanBoard, ScanBoardView, type ScanBoardProps, type ScanPhase } from "./ScanBoard";
 
 /** When the stored scan for this track was made, or null if there is none (D34). */

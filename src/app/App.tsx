@@ -3,6 +3,7 @@
 // be read in one place.
 import { MoveCamera, ScanBoard } from "./camera";
 import type { MoveResult } from "./camera";
+import { spotCenter } from "../engine";
 import { inPlayOf, recordMove } from "./game";
 import { game, savedGame, screen, setGame, update } from "./store";
 import { trackById } from "./tracks";
@@ -83,6 +84,7 @@ function Current() {
       return (
         <RaceScreen
           onLegend={(legend) => go({ name: "camera", legend })}
+          onRescan={() => go({ name: "rescan" })}
           onEndRace={() => {
             setGame(null);
             go({ name: "track" });
@@ -102,9 +104,19 @@ function Current() {
               go({ name: "race" });
             }}
             onTapMode={() => go({ name: "tap", legend: s.legend })}
+            onRescan={() => go({ name: "rescan", legend: s.legend })}
           />
         </div>
       );
+    case "rescan": {
+      const back = () => go(s.legend ? { name: "camera", legend: s.legend } : { name: "race" });
+      const cars = inPlayOf(g.roles).flatMap((c) => (g.positions[c] ? [spotCenter(info.track, g.positions[c]!)] : []));
+      return (
+        <div class="fullscreen">
+          <ScanBoard track={info.track} rescan={{ cars, colors: inPlayOf(g.roles) }} onDone={back} onCancel={back} />
+        </div>
+      );
+    }
     case "tap":
       return (
         <TapMode

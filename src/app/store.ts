@@ -14,6 +14,7 @@ export type Screen =
   | { name: "roles"; trackId: string }
   | { name: "race" }
   | { name: "camera"; legend: CarColor }
+  | { name: "rescan"; legend?: CarColor } // D36; back to that Legend's move afterwards
   | { name: "tap"; legend: CarColor };
 
 export const savedGame = deserialize(loadGameText());

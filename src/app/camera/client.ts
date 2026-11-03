@@ -3,7 +3,7 @@
 // The worker is initialised per track, with the stored scan when there is one.
 import type { TrackInfo } from "../tracks";
 import { loadScan } from "./scanStore";
-import type { FrameResult, Mode, Request, Response } from "./vision.worker";
+import type { FrameResult, Mode, Request, Rescan, Response } from "./vision.worker";
 import type { CarColor } from "../../engine";
 
 let worker: Worker | null = null;
@@ -40,7 +40,7 @@ export function prepare(info: TrackInfo): Promise<{ ownBoard: boolean }> {
   return ready.done;
 }
 
-export const resetTracking = () => call<null>({ kind: "reset" });
+export const resetTracking = (rescan?: Rescan) => call<null>({ kind: "reset", rescan });
 export const buildScan = () => call<Blob>({ kind: "buildScan" });
 
 export function processFrame(mode: Mode, frame: ImageBitmap, colors?: CarColor[]): Promise<FrameResult> {

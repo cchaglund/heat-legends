@@ -7,7 +7,9 @@
 
 ## Current focus
 
-**2026-11-03: first real play-test on the phone went well ("works great", fast). Waiting for the user's annotated screenshots from the UI gallery (`?gallery`).** One finding: after a lighting change the camera barely worked until the user rescanned the board, so the stored scan is tied to the lighting it was made in (see the gotcha; makes D34's "suggest a rescan" more important).
+**2026-11-03 (latest): D36 built: rescan suggestion after 2 failed sweeps + mid-race rescan with the cars on the board (`ScanBoard rescan`, worker `reset {rescan}`, `ScanAccumulator.excludeBox/markCandidate`). Gallery feedback round 1 applied (race screen: Legends first, filled = not moved, card + history folded; scan-complete dialog; crimson primary buttons). Waiting on the user's play-test.**
+
+**Earlier 2026-11-03: first real play-test on the phone went well ("works great", fast).** One finding: after a lighting change the camera barely worked until the user rescanned the board, so the stored scan is tied to the lighting it was made in (see the gotcha; makes D34's "suggest a rescan" more important).
 
 **UI gallery:** `/?gallery` (deployed: https://cchaglund.github.io/heat-legends/?gallery) shows all 34 screen states in 390×844 iframes; `/?state=<id>` renders one state alone. States are in `src/app/gallery/states.tsx` (real components with made-up data; camera screens use the printed board as a still picture). For this the camera screens were split into a container and a view (`MoveCameraView`, `ScanBoardView`, `drawOverlay`), and a few screens take an optional starting state (`StartScreen saved`, `BoardScreen scanDate`, `RolesScreen initial`, `TapMode initial`, `UpdateBannerView`). In `?state` mode storage writes are disabled, so a tap there can't overwrite the real saved race. Add a state there when adding a screen state.
 
@@ -90,10 +92,11 @@ Findings:
 **Earlier idea, now partly done:** stop tuning pixels and use the track.** A car can only stand on a space. Once M3 annotates the spaces, a blob counts only when it sits on a space, and only one car fits per spot. Most black/silver false blobs (verges, markings, glare streaks) are not on a space centre. Measure this on the fixtures as soon as `tracks/france.json` exists.
 
 ### Next actions (in order)
-1. **Light changes (user: important).** Proposed to the user 2026-11-03: (a) automatic light compensation per sweep (robust per-channel colour fit of the scan to the current frame on track pixels), measured on the lamp-on/lamp-off videos; (b) a "the light has changed" check (track pixels still unlike the scan after compensation, or the Legend not found twice while the board is aligned) that offers a rescan or By hand. Open question for the user: how a mid-race rescan works with cars on the board. Gallery feedback round 1 is applied.
-2. Things known to be missing (pick by what the play-test shows): D20 [Wrong car] cycling; D19 quality-gate hints during the sweep ("hold steadier"); M6 polish (smoothed H, holding the last H through dropouts, an off-screen target arrow, D16); D34 "suggest a rescan" on unusual noise (now confirmed needed: a lighting change broke detection until a rescan); caching the built detection model so startup skips ~2 s; black detection (best effort, 1/5); the roles screen's drag (D31, optional).
-3. Tuning knobs once there is real phone data: `SWEEP_BASELINE` 100 ref px and `MIN_VIEWS` 4 (`MoveCamera.tsx`), `MIN_FRACTION` 0.6 / `MIN_BASELINE` 40 (`sweep.ts`), `SCAN_INTAKE_MS` 1000 (`vision.worker.ts`).
-4. Check the "Update available → Reload" prompt across two deploys (only testable on the deployed PWA).
+1. **Waiting on the user:** play-test the mid-race rescan (D36) when the light changes: ⋯ → "Rescan the board", or accept the suggestion after two failed sweeps. If detection fails again, ask for a short phone video of the board in that light (cars on), so the failure can be reproduced: the fixtures' lamp on/off change does *not* reproduce it (coloured cars are found across lighting already).
+2. Light-change follow-ups if the play-test shows the need: the suggestion counts failed sweeps only; an automatic light-change statistic was tried and doesn't track recall (`tools/light-check.ts`, D36).
+3. Things known to be missing (pick by what the play-test shows): D20 [Wrong car] cycling; D19 quality-gate hints during the sweep ("hold steadier"); M6 polish (smoothed H, holding the last H through dropouts, an off-screen target arrow, D16); (D34 rescan: done as D36); caching the built detection model so startup skips ~2 s; black detection (best effort, 1/5); the roles screen's drag (D31, optional).
+4. Tuning knobs once there is real phone data: `SWEEP_BASELINE` 100 ref px and `MIN_VIEWS` 4 (`MoveCamera.tsx`), `MIN_FRACTION` 0.6 / `MIN_BASELINE` 40 (`sweep.ts`), `SCAN_INTAKE_MS` 1000 (`vision.worker.ts`).
+5. Check the "Update available → Reload" prompt across two deploys (only testable on the deployed PWA).
 
 Analysis helpers: `npm run vision:detect` writes `_<set>-blobs.json` (every blob with features and the assigned colour) next to the report.
 
@@ -161,6 +164,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 
 ### M6 — Live polish
 - [ ] Smoothed H, hold through dropouts, off-screen target arrow
+- [x] D36 light changes: rescan suggestion + mid-race rescan (2026-11-03)
+- [x] UI gallery (`?gallery`) + feedback round 1 (2026-11-03)
 
 ### Open items needing the user
 - [x] Decided D35 (2026-11-03): a short sideways sweep, then a live AR arrow.
@@ -172,6 +177,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - [x] Decided D34: store scans, suggest a rescan on unusual noise.
 
 ## Findings & gotchas (read before touching vision code)
+- **Vitest can't `import` OpenCV.js** (its module object is thenable: "Promise.prototype.then called on incompatible receiver"). Tests that need cv `require` it instead (see `src/vision/scan.test.ts`). `scan.ts` etc. only import the `CV` *type*, so they stay testable.
+- **Candidate blobs recur where the light changed**, not only on cars: as a "car here" signal for the rescan they froze 26–31% of the board. Use assigned on-space detections (D36).
 - **The stored scan is tied to the lighting it was made in.** In the user's play-test (2026-11-03) detection nearly stopped working after the lighting changed, and a rescan fixed it at once. Expected: detection compares against the scanned board's colours. Rescan when the light changes; D34's rescan suggestion should catch this.
 - **Testing camera screens on the laptop:** Chrome with `--use-fake-ui-for-media-stream --use-fake-device-for-media-stream --use-file-for-fake-video-capture=<file>.y4m` (playwright-cli `--config` with `browser.launchOptions.args`). Make the y4m with ffmpeg (e.g. a `crop` that pans over a fixture photo); playwright-cli screenshots must be saved under the repo (`.playwright-cli/`, git-ignored). The first worker load in dev can trigger a Vite dependency re-optimisation and a page reload: just retry.
 - **Fast registration (`register`) is up to ~25px off on some frames.** Fine for detection; not for the board scan's median, which is why scan frames get a `track(…, 12000, 24)` polish pass.
@@ -189,6 +196,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - `fixtures-raw/` holds the original photos **with GPS EXIF**. It's git-ignored; never commit it. `reports/` is git-ignored too: regenerate it.
 
 ## Session log
+- **2026-11-03 (e)**: Crimson primary buttons + divider (user). D36: rescan suggestion after 2 failed sweeps, mid-race rescan with cars on the board (old scan kept near known/detected cars); light-change statistic tried and dropped; rescan simulated (`RESCAN_FROM`) and browser-tested.
 - **2026-11-03 (d)**: User feedback on the gallery: scan-complete dialog (#11); race screen: Legend buttons first, filled colour = not moved this round, dark = moved (#17); card and move history folded by default; no boxed placeholder at round 0 (#15).
 - **2026-11-03 (c)**: User's play-test: works and fast; a lighting change needed a rescan. Built the UI gallery (`?gallery`, 34 states) for the user's annotated feedback.
 - **2026-11-03 (b)**: D35 agreed. M4 app shell (subagent) + M5 sweep/scan/live arrow; sweep consensus with majority vote; on-phone scan needs polish + 1 frame/s; fake-camera browser tests pass in dev and production builds.

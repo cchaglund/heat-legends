@@ -6,6 +6,12 @@
 // per-pixel median. Pixels seen by fewer than K views keep the printed board.
 // Feed it about one frame a second (see the app worker): K-sharpest of many
 // frames favours the closest views and makes the reference too crisp.
+// A rescan mid-race (D36) starts from the old scan instead and never takes
+// pixels where a car may stand: known cars (`excludeBox`) and cars detected
+// in ≥ CAR_VOTES frames (`markCandidate`; a car stays put, a false detection
+// rarely repeats on the same spot). Those keep the old scan as it was:
+// fitting its colours to the new light measured no better (1.33 vs 1.19
+// false cars per empty frame), since detection normalizes lighting anyway.
 import type { CV } from "./cv";
 import { invert, type H3 } from "./homography";
 import type { Rgb } from "./detect";
@@ -13,6 +19,8 @@ import type { Rgb } from "./detect";
 const K = 3;
 /** A view is "sharp" at a pixel when it samples it at ≥ this many photo px per reference px (D32). */
 export const MIN_DENSITY = 0.8;
+/** Frames a candidate blob must appear in before its pixels keep the old scan (D36). */
+export const CAR_VOTES = 2;
 
 export class ScanAccumulator {
   readonly width: number;
@@ -20,8 +28,13 @@ export class ScanAccumulator {
   private readonly values: Uint8Array; // K × 3 per pixel, sharpest first
   private readonly dens: Float32Array; // K per pixel, descending
   private readonly sharp: Uint8Array; // sharp views seen per pixel (capped)
+  /** 1 = never take this pixel from the views (a known car). */
+  readonly exclude: Uint8Array;
+  private readonly votes: Uint8Array; // frames with a candidate blob here (capped)
+  private readonly voted: Int32Array; // the last frame that voted here
   frames = 0;
 
+  /** `base`: the printed board, or for a rescan the old scan. */
   constructor(private readonly base: Rgb) {
     this.width = base.width;
     this.height = base.height;
@@ -29,6 +42,41 @@ export class ScanAccumulator {
     this.values = new Uint8Array(n * K * 3);
     this.dens = new Float32Array(n * K);
     this.sharp = new Uint8Array(n);
+    this.exclude = new Uint8Array(n);
+    this.votes = new Uint8Array(n);
+    this.voted = new Int32Array(n).fill(-1);
+  }
+
+  /** Marks a box (reference px) as excluded. */
+  excludeBox(x0: number, y0: number, x1: number, y1: number) {
+    this.box(x0, y0, x1, y1, (i) => (this.exclude[i] = 1));
+  }
+
+  /** A candidate blob's box in the frame about to be added; counts once per frame. */
+  markCandidate(x0: number, y0: number, x1: number, y1: number) {
+    const f = this.frames;
+    this.box(x0, y0, x1, y1, (i) => {
+      if (this.voted[i] === f) return;
+      this.voted[i] = f;
+      if (this.votes[i] < 255) this.votes[i]++;
+    });
+  }
+
+  /** Share of the board that keeps the base image because a car may stand there. */
+  excludedShare(): number {
+    let k = 0;
+    for (let i = 0; i < this.exclude.length; i++) if (this.excluded(i)) k++;
+    return k / this.exclude.length;
+  }
+
+  private excluded(i: number) {
+    return this.exclude[i] === 1 || this.votes[i] >= CAR_VOTES;
+  }
+
+  private box(x0: number, y0: number, x1: number, y1: number, f: (i: number) => void) {
+    const { width, height } = this;
+    for (let y = Math.max(0, Math.floor(y0)); y <= Math.min(height - 1, y1); y++)
+      for (let x = Math.max(0, Math.floor(x0)); x <= Math.min(width - 1, x1); x++) f(y * width + x);
   }
 
   /** Adds one aligned frame (H maps frame → reference). */
@@ -78,13 +126,15 @@ export class ScanAccumulator {
     return ok / points.length;
   }
 
-  /** The scanned reference: median of the K sharpest views, the printed board where there are fewer. */
+  /** The scanned reference: median of the K sharpest views, the base image (printed board, or the old scan) where there are fewer. */
   build(): Rgb {
-    const out = new Uint8Array(this.base.data);
+    const n = this.width * this.height;
     const { values, dens } = this;
+    const full = (i: number) => dens[i * K + K - 1] > 0 && !this.excluded(i);
+    const out = new Uint8Array(this.base.data);
     const v = [0, 0, 0];
-    for (let i = 0, n = this.width * this.height; i < n; i++) {
-      if (dens[i * K + K - 1] === 0) continue;
+    for (let i = 0; i < n; i++) {
+      if (!full(i)) continue;
       for (let ch = 0; ch < 3; ch++) {
         for (let s = 0; s < K; s++) v[s] = values[(i * K + s) * 3 + ch];
         out[i * 3 + ch] = median3(v[0], v[1], v[2]);

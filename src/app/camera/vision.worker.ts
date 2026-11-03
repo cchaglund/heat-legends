@@ -17,8 +17,10 @@ export type Mode = "scan" | "sweep" | "live";
 export type Request =
   | { kind: "init"; imageUrl: string; track: Track; scan: Blob | null }
   | { kind: "frame"; mode: Mode; frame: ImageBitmap; colors?: CarColor[] }
-  | { kind: "reset" }
+  /** `rescan`: the next scan is a rescan mid-race (D36): cars stay on the board. */
+  | { kind: "reset"; rescan?: Rescan }
   | { kind: "buildScan" };
+export type Rescan = { cars: { x: number; y: number }[]; colors: CarColor[] };
 export type FrameResult = {
   ok: boolean;
   H: H3 | null;
@@ -41,11 +43,15 @@ const BLUR_FACTOR = 0.5; // scan frames: skip one less than half as sharp as rec
 // views see, and silver/black detection drops (silver 7/8 → 0/8 on the
 // close-ups; tools/scan-sim-video.ts EVERY=1 vs 10).
 const SCAN_INTAKE_MS = 1000;
+// Rescan (D36): pixels this close to a known or detected car keep the old scan.
+const CAR_MARGIN_PX = 30;
 
 let cv: CV;
 let ref: RefFeatures;
 let model: ReferenceModel;
 let base: Rgb;
+let current: Rgb; // the detection reference: the stored scan, or the printed board
+let rescan: Rescan | null = null;
 let board: Track;
 let samples: { x: number; y: number }[][] = [];
 let prevH: H3 | null = null; // video px → reference
@@ -71,19 +77,22 @@ async function handle(req: Request): Promise<unknown> {
       ref = prepareReference(cv, toGray(base));
       board = req.track;
       samples = board.spaces.map((s) => [spotCenter(board, { space: s.index, spot: 0 }), spotCenter(board, { space: s.index, spot: 1 })]);
-      model = buildReferenceModel(cv, req.scan ? await decode(req.scan, Infinity) : base);
+      current = req.scan ? await decode(req.scan, Infinity) : base;
+      model = buildReferenceModel(cv, current);
       prevH = null;
       return { ownBoard: !!req.scan };
     }
     case "reset":
       prevH = null;
       scan = null;
+      rescan = req.rescan ?? null;
       recentSharpness = [];
       lastIntake = 0;
       return null;
     case "buildScan": {
       if (!scan) throw new Error("no scan in progress");
       const img = scan.build();
+      current = img;
       model = buildReferenceModel(cv, img);
       return await encodeJpeg(img);
     }
@@ -112,11 +121,10 @@ function frame(mode: Mode, bitmap: ImageBitmap, colors: CarColor[]): FrameResult
   const out: FrameResult = { ok: true, H: prevH, width, height, ms: 0 };
 
   if (mode === "sweep") {
-    const accept = (b: { x: number; y: number }) => spaceAtPoint(board, b.x, b.y) >= 0;
-    const res = detectCars(cv, model, rgb, H, colors, accept);
+    const res = detectCars(cv, model, rgb, H, colors, onSpace);
     out.detections = res.detections.map((d) => ({ color: d.color, x: d.blob.x, y: d.blob.y }));
   } else if (mode === "scan") {
-    scan ??= new ScanAccumulator(base);
+    scan ??= newScan();
     const s = sharpness(gray);
     const typical = recentSharpness.length ? [...recentSharpness].sort((a, b) => a - b)[recentSharpness.length >> 1] : 0;
     recentSharpness = [...recentSharpness.slice(-14), s];
@@ -125,12 +133,29 @@ function frame(mode: Mode, bitmap: ImageBitmap, colors: CarColor[]): FrameResult
       lastIntake = t0;
       const polished = track(cv, ref, gray, H, 12000, POLISH_PX);
       if (polished.ok) H = polished.H!;
+      // Rescan: cars detected on a space vote; one seen in ≥2 frames keeps the
+      // old scan. Not every candidate blob: those recur wherever the light
+      // changed, which is exactly what the rescan must refresh (D36).
+      if (rescan) {
+        for (const { blob: { box: [x, y, w, h] } } of detectCars(cv, model, rgb, H, rescan.colors, onSpace).detections)
+          scan.markCandidate(x - CAR_MARGIN_PX, y - CAR_MARGIN_PX, x + w + CAR_MARGIN_PX, y + h + CAR_MARGIN_PX);
+      }
       scan.add(cv, rgb, H);
     }
     out.coverage = samples.map((pts) => scan!.coverage(pts));
   }
   out.ms = performance.now() - t0;
   return out;
+}
+
+const onSpace = (b: { x: number; y: number }) => spaceAtPoint(board, b.x, b.y) >= 0;
+
+function newScan(): ScanAccumulator {
+  if (!rescan) return new ScanAccumulator(base);
+  const acc = new ScanAccumulator(current);
+  const m = CAR_MARGIN_PX + 15; // a spot centre, plus half a car
+  for (const c of rescan.cars) acc.excludeBox(c.x - m, c.y - m, c.x + m, c.y + m);
+  return acc;
 }
 
 function drawScaled(src: ImageBitmap, edge: number): Rgb {

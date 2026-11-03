@@ -104,6 +104,7 @@ type MoveOpts = {
   cameraError?: string;
   error?: string;
   blank?: boolean;
+  suggestRescan?: boolean;
 };
 
 function MovePreview(o: MoveOpts) {
@@ -127,6 +128,8 @@ function MovePreview(o: MoveOpts) {
             onCancel={noop}
             onSweepAgain={noop}
             onTapMode={noop}
+            suggestRescan={o.suggestRescan}
+            onRescan={noop}
             onDone={noop}
           />
         </Drawn>
@@ -147,7 +150,7 @@ function midpoint(m: LegendMove): Point {
   return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
 }
 
-type ScanOpts = { phase: ScanPhase; coverage?: number[]; lost?: boolean; frames?: number; cameraError?: string; error?: string; blank?: boolean };
+type ScanOpts = { rescan?: boolean; phase: ScanPhase; coverage?: number[]; lost?: boolean; frames?: number; cameraError?: string; error?: string; blank?: boolean };
 
 function ScanPreview(o: ScanOpts) {
   return (
@@ -155,6 +158,7 @@ function ScanPreview(o: ScanOpts) {
       {(_, bg) => (
         <ScanBoardView
           track={track}
+          rescan={o.rescan}
           phase={o.phase}
           coverage={o.coverage ?? []}
           lost={!!o.lost}
@@ -199,19 +203,21 @@ export const STATES: UiState[] = [
   { id: "scan-lost", group: "Board scan", title: "Scanning: board out of view", render: () => fullscreen(<ScanPreview phase="scanning" lost coverage={coverage(24, 6)} frames={14} />) },
   { id: "scan-saving", group: "Board scan", title: "Building the scan", render: () => fullscreen(<ScanPreview phase="saving" coverage={coverage(56, 4)} frames={31} />) },
   { id: "scan-error", group: "Board scan", title: "Error", render: () => fullscreen(<ScanPreview phase="error" error="no scan in progress" />) },
+  { id: "rescan", group: "Board scan", title: "Rescan mid-race", note: "From the settings sheet or the rescan suggestion.", render: () => fullscreen(<ScanPreview rescan phase="scanning" coverage={coverage(10, 6)} frames={6} />) },
+  { id: "rescan-done", group: "Board scan", title: "Rescan mid-race: done", render: () => fullscreen(<ScanPreview rescan phase="scanning" coverage={coverage(56, 4)} frames={31} />) },
 
   // --- Race
-  { id: "race-new", group: "Race", title: "Race started, round 0", render: withGame(fresh, () => <RaceScreen onLegend={noop} onEndRace={noop} />) },
-  { id: "race-card", group: "Race", title: "Round 1, card revealed", render: withGame(cardShown, () => <RaceScreen onLegend={noop} onEndRace={noop} />) },
-  { id: "race-mid", group: "Race", title: "Round 2, Blue moved", note: "Tap the folds to open the card and the history.", render: withGame(midRace, () => <RaceScreen onLegend={noop} onEndRace={noop} />) },
+  { id: "race-new", group: "Race", title: "Race started, round 0", render: withGame(fresh, () => <RaceScreen onLegend={noop} onEndRace={noop} onRescan={noop} />) },
+  { id: "race-card", group: "Race", title: "Round 1, card revealed", render: withGame(cardShown, () => <RaceScreen onLegend={noop} onEndRace={noop} onRescan={noop} />) },
+  { id: "race-mid", group: "Race", title: "Round 2, Blue moved", note: "Tap the folds to open the card and the history.", render: withGame(midRace, () => <RaceScreen onLegend={noop} onEndRace={noop} onRescan={noop} />) },
   {
     id: "race-about",
     group: "Race",
     title: "Settings sheet",
     render: withGame(midRace, () => (
       <>
-        <RaceScreen onLegend={noop} onEndRace={noop} />
-        <About onClose={noop} onEndRace={noop} />
+        <RaceScreen onLegend={noop} onEndRace={noop} onRescan={noop} />
+        <About onClose={noop} onEndRace={noop} onRescan={noop} />
       </>
     )),
   },
@@ -222,7 +228,7 @@ export const STATES: UiState[] = [
     render: withGame(midRace, () => (
       <>
         <UpdateBannerView onLater={noop} onReload={noop} />
-        <RaceScreen onLegend={noop} onEndRace={noop} />
+        <RaceScreen onLegend={noop} onEndRace={noop} onRescan={noop} />
       </>
     )),
   },
@@ -245,6 +251,13 @@ export const STATES: UiState[] = [
   },
   { id: "move-sweep-lost", group: "Legend move (camera)", title: "Sweep: board out of view", render: () => fullscreen(<MovePreview phase="sweep" progress={0.4} lost />) },
   { id: "move-not-found", group: "Legend move (camera)", title: "Legend not found", render: () => fullscreen(<MovePreview phase="notFound" centre={spotCenter(track, camBoard.blue!)} />) },
+  {
+    id: "move-rescan",
+    group: "Legend move (camera)",
+    title: "Not found again: rescan?",
+    note: "After two sweeps in a row that saw the board but not the Legend.",
+    render: () => fullscreen(<MovePreview phase="notFound" suggestRescan centre={spotCenter(track, camBoard.blue!)} />),
+  },
   { id: "move-live", group: "Legend move (camera)", title: "Live arrow", render: () => fullscreen(<MovePreview phase="live" found={found(true)} arrow={camMove} />) },
   {
     id: "move-live-outer",

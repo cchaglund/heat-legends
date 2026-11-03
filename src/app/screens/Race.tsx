@@ -12,9 +12,9 @@ import { trackById } from "../tracks";
 import { Swatch } from "../Swatch";
 import { About } from "../About";
 
-type Props = { onLegend: (legend: CarColor) => void; onEndRace: () => void };
+type Props = { onLegend: (legend: CarColor) => void; onEndRace: () => void; onRescan: () => void };
 
-export function RaceScreen({ onLegend, onEndRace }: Props) {
+export function RaceScreen({ onLegend, onEndRace, onRescan }: Props) {
   const g = game.value!;
   const track = trackById(g.trackId)!.track;
   const [about, setAbout] = useState(false);
@@ -102,6 +102,7 @@ export function RaceScreen({ onLegend, onEndRace }: Props) {
       {about && (
         <About
           onClose={() => setAbout(false)}
+          onRescan={onRescan}
           onEndRace={() => {
             if (confirm("End this race? It can't be resumed afterwards.")) onEndRace();
           }}

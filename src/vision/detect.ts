@@ -51,6 +51,8 @@ export type DetectResult = {
   diff: Float32Array;
   /** Detail on the visible track relative to the reference (quality gate). */
   sharpness: number;
+  /** Reference pixels the frame covers, 0/1. */
+  valid: Uint8Array;
 };
 
 export type ReferenceModel = {
@@ -181,7 +183,7 @@ export function detectCars(
 
   const onTrack = valid.map((v, i) => v && model.track[i] ? 1 : 0);
   const sharpness = relativeSharpness(model.rgb, normalized, onTrack);
-  return { blobs, detections: assign(blobs.filter(accept), colors), normalized, mask, diff, sharpness };
+  return { blobs, detections: assign(blobs.filter(accept), colors), normalized, mask, diff, sharpness, valid };
 }
 
 /**

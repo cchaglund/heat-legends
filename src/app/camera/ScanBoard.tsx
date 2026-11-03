@@ -7,15 +7,23 @@ import { useEffect, useState } from "preact/hooks";
 import type { Track } from "../../engine";
 import { trackById } from "../tracks";
 import { buildScan, prepare, processFrame, resetTracking } from "./client";
+import { resetSweepMisses } from "./MoveCamera";
 import { saveScan } from "./scanStore";
+import type { Rescan } from "./vision.worker";
 import { useCamera, useFrameLoop } from "./useCamera";
 
-export type ScanBoardProps = { track: Track; onDone: () => void; onCancel: () => void };
+export type ScanBoardProps = {
+  track: Track;
+  /** Mid-race rescan (D36): cars stay where they are; their spots keep the old scan. */
+  rescan?: Rescan;
+  onDone: () => void;
+  onCancel: () => void;
+};
 
 const ENOUGH = 0.85; // D32: aim for most of the track; the rest falls back to the printed board
 const MIN_TO_FINISH = 0.3;
 
-export function ScanBoard({ track, onDone, onCancel }: ScanBoardProps) {
+export function ScanBoard({ track, rescan, onDone, onCancel }: ScanBoardProps) {
   const info = trackById(track.id)!;
   const { video, state } = useCamera();
   const [phase, setPhase] = useState<ScanPhase>("loading");
@@ -27,7 +35,7 @@ export function ScanBoard({ track, onDone, onCancel }: ScanBoardProps) {
   useEffect(() => {
     if (state.status !== "running") return;
     prepare(info)
-      .then(resetTracking)
+      .then(() => resetTracking(rescan))
       .then(() => setPhase("scanning"))
       .catch((e) => (setError(String(e.message ?? e)), setPhase("error")));
   }, [state.status]);
@@ -44,6 +52,7 @@ export function ScanBoard({ track, onDone, onCancel }: ScanBoardProps) {
     try {
       const image = await buildScan();
       await saveScan({ trackId: track.id, date: Date.now(), image });
+      resetSweepMisses();
       onDone();
     } catch (e) {
       setError(String((e as Error).message ?? e));
@@ -54,6 +63,7 @@ export function ScanBoard({ track, onDone, onCancel }: ScanBoardProps) {
   return (
     <ScanBoardView
       track={track}
+      rescan={!!rescan}
       phase={phase}
       coverage={coverage}
       lost={lost}
@@ -70,6 +80,7 @@ export function ScanBoard({ track, onDone, onCancel }: ScanBoardProps) {
 export type ScanPhase = "loading" | "scanning" | "saving" | "error";
 export type ScanBoardViewProps = {
   track: Track;
+  rescan?: boolean;
   phase: ScanPhase;
   coverage: number[];
   lost: boolean;
@@ -92,8 +103,11 @@ export function ScanBoardView(p: ScanBoardViewProps) {
     <div class="cam">
       {p.background}
       <div class="cam-top">
-        <b>Scan the empty board</b>
-        <span>Remove all cars. Film the whole track slowly from close up, a little from each side (about half a minute).</span>
+        <b>{p.rescan ? "Rescan the board" : "Scan the empty board"}</b>
+        <span>
+          {p.rescan ? "Leave the cars where they are. " : "Remove all cars. "}
+          Film the whole track slowly from close up, a little from each side (about half a minute).
+        </span>
       </div>
       <TrackMap track={track} width={info.width} height={info.height} coverage={coverage} />
       <div class="cam-bottom">
@@ -115,7 +129,7 @@ export function ScanBoardView(p: ScanBoardViewProps) {
       {done && !keepGoing && (
         <div class="cam-dialog" role="dialog" aria-labelledby="scan-done">
           <h2 id="scan-done">Scan complete</h2>
-          <p>Enough of the track is scanned. You can put the cars back on the board.</p>
+          <p>{p.rescan ? "Enough of the track is scanned." : "Enough of the track is scanned. You can put the cars back on the board."}</p>
           <button class="btn primary wide big" onClick={p.onDone}>OK</button>
           <button class="link" onClick={() => setKeepGoing(true)}>Keep scanning</button>
         </div>
