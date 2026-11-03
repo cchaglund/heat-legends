@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { syntheticAnnotation } from "./synthetic";
-import { cornersAhead, deriveTrack, spaceAtPoint, spaceLabel } from "./track";
+import { cornersAhead, deriveTrack, positionAtPoint, spaceAtPoint, spaceLabel, spotCenter } from "./track";
 import type { TrackAnnotation } from "./types";
 
 const ann = () =>
@@ -82,5 +82,17 @@ describe("spaceAtPoint", () => {
     expect(spaceAtPoint(t, 500 + 350 * Math.cos(a), 500 + 350 * Math.sin(a))).toBe(0);
     expect(spaceAtPoint(t, 500, 500)).toBe(-1);
     expect(spaceAtPoint(t, 950, 500)).toBe(-1);
+  });
+});
+
+describe("positionAtPoint / spotCenter", () => {
+  it("raceline side a = outer half of the ring is spot 0", () => {
+    const t = deriveTrack(ann());
+    const a = (2 * Math.PI * 0.5) / 40;
+    const at = (r: number) => positionAtPoint(t, 500 + r * Math.cos(a), 500 + r * Math.sin(a));
+    expect(at(380)).toEqual({ space: 0, spot: 0 });
+    expect(at(320)).toEqual({ space: 0, spot: 1 });
+    expect(at(200)).toBeNull();
+    for (const spot of [0, 1] as const) expect(positionAtPoint(t, spotCenter(t, { space: 7, spot }).x, spotCenter(t, { space: 7, spot }).y)).toEqual({ space: 7, spot });
   });
 });

@@ -1,7 +1,5 @@
 import { render } from "preact";
-
-function App() {
-  return <h1>Heat Legends</h1>;
-}
+import { App } from "./app/App";
+import "./app/app.css";
 
 render(<App />, document.getElementById("app")!);

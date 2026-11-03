@@ -50,14 +50,15 @@ Before building any app on top of it: does the pipeline run fast enough on a **r
 - Tap the Legend's position → target + explanation text. Full-space hint.
 - Persist after every action; offer "Resume race?" (D23). Updatable PWA (D22).
 
-## M5 — Snapshot mode
-- Camera screen: capture a frame → the M1 pipeline in a Worker → BoardState → engine → overlay on the frozen photo, labeled "Green →".
+## M5 — Sweep + live AR (D35; M5 and M6 merged)
+- Board scan screen (D32–D34): film the empty board, coverage map, the reference is built on the phone and stored in IndexedDB.
+- Camera screen: a short sideways sweep → the M1 pipeline in a Worker on each frame → multi-view consensus → BoardState → engine → an arrow on the **live** picture (tracking only), labeled "Green →".
 - Quality gate with user hints (D19, thresholds from the fixtures).
 - [Wrong car] cycles through guesses → tap to correct. Learning from silence (D20).
 - Partial views / unknown occupancy / off-screen target arrow (D16).
 
-## M6 — Hybrid live mode (D15)
-- After detection, registration only, on downscaled frames at ~5–10 fps. Smoothed H, the last good H held through brief dropouts, snapshot fallback when the board is lost.
+## M6 — Live polish (D15)
+- Live tracking runs from M5 on. M6 = smoothed H, the last good H held through brief dropouts, re-registration when the board is lost, off-screen target arrow.
 
 ## Later
 See [07-future-enhancements.md](07-future-enhancements.md).

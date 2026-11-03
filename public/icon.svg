@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#15171a"/>
+  <g transform="translate(256 256)">
+    <path d="M-150 90 A170 170 0 0 1 120 -110" fill="none" stroke="#e0352b" stroke-width="44" stroke-linecap="round"/>
+    <path d="M70 -170 L170 -120 L95 -40 Z" fill="#e0352b"/>
+    <circle cx="-150" cy="90" r="46" fill="#f4c430"/>
+    <text x="0" y="150" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="150" fill="#f2f2f2" text-anchor="middle">L</text>
+  </g>
+</svg>

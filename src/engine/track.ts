@@ -2,7 +2,7 @@
 // the small bits of loop arithmetic every rule needs. Each corner is paired
 // with the nearest Legends Line before it; a track that breaks the printed
 // board's guarantees (D28) is refused here rather than half-working later.
-import type { Corner, Point, Space, Track, TrackAnnotation } from "./types";
+import type { Corner, Point, Position, Space, Track, TrackAnnotation } from "./types";
 
 const mid = (p: Point, q: Point): Point => ({ x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 });
 const mod = (a: number, n: number) => ((a % n) + n) % n;
@@ -80,11 +80,26 @@ export function deriveTrack(ann: TrackAnnotation): Track {
 
 /** Index of the space whose quad contains (x, y) in reference px, or -1. */
 export function spaceAtPoint(track: Track, x: number, y: number): number {
-  return track.spaces.findIndex(({ quad: q }) => {
-    const cross = q.map((p, i) => {
-      const r = q[(i + 1) % q.length];
-      return (r.x - p.x) * (y - p.y) - (r.y - p.y) * (x - p.x);
-    });
-    return cross.every((c) => c >= 0) || cross.every((c) => c <= 0);
+  return track.spaces.findIndex(({ quad }) => inside(quad, x, y));
+}
+
+const inside = (poly: Point[], x: number, y: number) => {
+  const cross = poly.map((p, i) => {
+    const r = poly[(i + 1) % poly.length];
+    return (r.x - p.x) * (y - p.y) - (r.y - p.y) * (x - p.x);
   });
+  return cross.every((c) => c >= 0) || cross.every((c) => c <= 0);
+};
+
+/** Space and spot under (x, y) in reference px, or null when off the track. */
+export function positionAtPoint(track: Track, x: number, y: number): Position | null {
+  const space = spaceAtPoint(track, x, y);
+  if (space < 0) return null;
+  return { space, spot: inside(track.spaces[space].spots[1].polygon, x, y) ? 1 : 0 };
+}
+
+/** Centre of a spot in reference px (mean of its corners). */
+export function spotCenter(track: Track, pos: Position): Point {
+  const poly = track.spaces[pos.space].spots[pos.spot].polygon;
+  return { x: poly.reduce((s, p) => s + p.x, 0) / poly.length, y: poly.reduce((s, p) => s + p.y, 0) / poly.length };
 }
