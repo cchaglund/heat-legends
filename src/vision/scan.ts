@@ -4,6 +4,8 @@
 // reference pixel only the K sharpest views are kept (sharpness = photo px
 // per reference px, from the homography's Jacobian), and the result is their
 // per-pixel median. Pixels seen by fewer than K views keep the printed board.
+// Feed it about one frame a second (see the app worker): K-sharpest of many
+// frames favours the closest views and makes the reference too crisp.
 import type { CV } from "./cv";
 import { invert, type H3 } from "./homography";
 import type { Rgb } from "./detect";

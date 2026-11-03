@@ -3,3 +3,4 @@ dist/
 fixtures-raw/
 .DS_Store
 reports/
+.playwright-cli/

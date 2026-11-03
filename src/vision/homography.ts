@@ -23,3 +23,8 @@ export function scale(h: H3, sx: number, sy = sx): H3 {
   // Returns S · H, i.e. the output coordinates scaled.
   return [h[0] * sx, h[1] * sx, h[2] * sx, h[3] * sy, h[4] * sy, h[5] * sy, h[6], h[7], h[8]];
 }
+
+/** Returns H · S, i.e. the input coordinates scaled: for a frame resized by `s`. */
+export function scaleInput(h: H3, s: number): H3 {
+  return [h[0] * s, h[1] * s, h[2], h[3] * s, h[4] * s, h[5], h[6] * s, h[7] * s, h[8]];
+}

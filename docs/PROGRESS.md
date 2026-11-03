@@ -7,7 +7,16 @@
 
 ## Current focus
 
-**M1, steps 2–4: car detection on the France fixtures.**
+**2026-11-03: the whole flow is built (M4 + M5 per D35); waiting for the user's first real game test on the phone.** App: https://cchaglund.github.io/heat-legends/ (or `npm run dev` → `https://<LAN IP>:5173/`). Flow: France → Scan board (film the empty board ~30 s; map fills; Done) → roles → race → tap a Legend → sweep sideways over it → live arrow → Done. "By hand" = tap mode.
+
+**Sweep + scan results (2026-11-03):**
+- Sweep consensus `src/vision/sweep.ts` = a pair of views ≥40 ref px apart agree **and** ≥60% of the views showing the spot see the car. On the 10 fps empty-board videos (`npx tsx tools/sweep-eval.ts`, detection reference = the *other* video's scan): 0 false cars in 44 sweeps (lamp off), 1–2 in 39 (lamp on, a persistent silver glare). The pair rule alone: ~0.3 per sweep. Recall on close-up groups (`npx tsx tools/sweep-recall.ts`): 12/12 named cars.
+- On-phone board scan `src/vision/scan.ts` (median of the 3 sharpest views per pixel, ~40 MB): needs (a) a polish pass per frame (`track` within 24px, 12000 features), because the fast registration is up to ~25px off on some frames, and (b) **≤1 frame/s intake**: with all 10 fps frames the 3 sharpest views are the closest ones, the reference gets too crisp, silver drops 7/8 → 0/8 and false blacks appear. With both: 0 false cars, silver 7/8 (`npx tsx tools/scan-sim-video.ts closeup-light-d` with `EVERY=10`, then `DETECT_REF=… npm run test:vision`).
+- Browser-tested with a fake camera (Chrome `--use-file-for-fake-video-capture` with a y4m panning over `closeup-light-d/yellow-green-blue.jpg`, and IMG_2040 as the scan video): the sweep found yellow at space 6 (= truth), the arrow is drawn on the live picture; the scan stored and the board step offers "Use stored board". Also checked on the production build (`vite preview`).
+
+---
+
+**Earlier: M1, steps 2–4: car detection on the France fixtures.**
 
 ### Results so far (consensus check: is each colour's detection at its set's median position, within 40px?)
 | Set | red | blue | green | yellow | black | silver |
@@ -77,11 +86,10 @@ Findings:
 **Earlier idea, now partly done:** stop tuning pixels and use the track.** A car can only stand on a space. Once M3 annotates the spaces, a blob counts only when it sits on a space, and only one car fits per spot. Most black/silver false blobs (verges, markings, glare streaks) are not on a space centre. Measure this on the fixtures as soon as `tracks/france.json` exists.
 
 ### Next actions (in order)
-1. **Waiting on the user:** the snapshot capture decision (Open items). Camera shots from the phone bench (cars unmoved: yellow 45, red 46, green 53, silver 55, blue 55; black not on the board): every coloured detection is at the right space, cars missing from a shot were probably out of frame; one false `black@45` in 5 shots. No older phone available.
-2. Remaining false positives (~0.1–0.7/photo vs the D27 bar 0.05): look at the survivors with `FP_LOG`. Candidates: glare moves with the camera while a car doesn't, so the hybrid live mode (D15) can require a silver/black detection to stay put across frames; black needs its own cue (black close-ups 1/5).
-3. Optional black/silver pixel work: why the silver assignment still picks a wrong bright blob in 8/13 close-ups (regenerate blobs with `DETECT_REF=reports/ref/france-scan-light-d.png npm run vision:detect -- france closeup-light-d` and compare costs).
-4. Board scan is decided (D32–D34); build it in M4/M5 using `tools/build-own-reference.ts` as the algorithm.
-5. Then M4 (app shell + tap mode). Pick the quality-gate threshold with live frames (~0.6 to start).
+1. **Waiting on the user:** play-test on the phone (scan, then a few Legend moves) and report what goes wrong: sweep too slow or never finishes, wrong cars, arrow jitter or drift, the startup time.
+2. Things known to be missing (pick by what the play-test shows): D20 [Wrong car] cycling; D19 quality-gate hints during the sweep ("hold steadier"); M6 polish (smoothed H, holding the last H through dropouts, an off-screen target arrow, D16); D34 "suggest a rescan" on unusual noise; caching the built detection model so startup skips ~2 s; black detection (best effort, 1/5); the roles screen's drag (D31, optional).
+3. Tuning knobs once there is real phone data: `SWEEP_BASELINE` 100 ref px and `MIN_VIEWS` 4 (`MoveCamera.tsx`), `MIN_FRACTION` 0.6 / `MIN_BASELINE` 40 (`sweep.ts`), `SCAN_INTAKE_MS` 1000 (`vision.worker.ts`).
+4. Check the "Update available → Reload" prompt across two deploys (only testable on the deployed PWA).
 
 Analysis helpers: `npm run vision:detect` writes `_<set>-blobs.json` (every blob with features and the assigned colour) next to the report.
 
@@ -96,7 +104,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - [x] GitHub Pages deploy workflow (`.github/workflows/deploy.yml`) → https://cchaglund.github.io/heat-legends/ (runs tests + build on push to `main`)
 - [x] Fixture prep: `npm run fixtures:prep` (`fixtures-raw/` → `fixtures/`, EXIF/GPS stripped)
 - [x] Legend cards as data: `data/legend-cards.json`
-- [ ] PWA setup (`vite-plugin-pwa`, prompt-to-update, D22). Planned for M4.
+- [x] PWA setup (`vite-plugin-pwa`, prompt-to-update, D22), done in M4. Update prompt not yet seen across two deploys.
 
 ### M1 — Vision spike
 - [x] Registration: two-pass ORB with tilt simulation, **127/128 (99%)**. `src/vision/registration.ts`, report `npm run vision:register`
@@ -133,11 +141,26 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - [ ] `tracks/france.json`
 - [ ] Convert `truth.json` pixel positions → spaces
 
-### M4 — App shell + tap mode · M5 — Snapshot mode · M6 — Hybrid live
-- [ ] Not started. See the plan.
+### M4 — App shell + tap mode ✅ (2026-11-03)
+- [x] Setup: track → board step (stored scan / scan / skip) → roles (D31, tap to cycle; no drag) → race
+- [x] Round flow (D6): Next round, Legend buttons, card on first tap, undo; move log
+- [x] Tap mode (D9): zoomable board, place cars, arrow + reason, full spaces
+- [x] Persistence + "Resume race?" (D23); PWA with update prompt + version/build date (D22)
+- [x] Game-state logic in `src/app/game.ts` (tested); camera screens behind `src/app/camera/index.tsx`
+
+### M5 — Sweep + live AR (D35) ✅ first version (2026-11-03)
+- [x] Vision worker `src/app/camera/vision.worker.ts` (modes scan / sweep / live; H always video px → reference)
+- [x] Board scan screen with coverage map, stored in IndexedDB (`scanStore.ts`), used for detection from then on
+- [x] Move screen: sweep with progress bar → consensus → engine → live arrow along the track, target outline, "couldn't see the target space" hint (D16), Sweep again / By hand / Done
+- [ ] Play-tested on the phone
+- [ ] D20 Wrong car · D19 hints during the sweep
+
+### M6 — Live polish
+- [ ] Smoothed H, hold through dropouts, off-screen target arrow
 
 ### Open items needing the user
-- [ ] Decide: snapshot mode = a short slow sweep (the multi-view check needs viewpoint change; holding still likely gives near-identical glare) instead of one frame? Without it, false positives are ~0.1–0.8/photo.
+- [x] Decided D35 (2026-11-03): a short sideways sweep, then a live AR arrow.
+- [ ] Play-test the app on the phone (Next actions 1).
 - [x] New fixtures delivered 2026-11-02: `closeup-light-c/d` (c = lamp off, d = lamp on), `scan-light-c/d` (video frames). See 05-development-and-testing.md.
 - [x] User reviewed the close-ups (2026-11-02). The review page now saves left-in-place guesses as confirmed (earlier saves were backfilled from the guesses shown).
 - [x] Decided D32: board scan = film, auto-pick sharp frames, coverage map.
@@ -145,6 +168,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - [x] Decided D34: store scans, suggest a rescan on unusual noise.
 
 ## Findings & gotchas (read before touching vision code)
+- **Testing camera screens on the laptop:** Chrome with `--use-fake-ui-for-media-stream --use-fake-device-for-media-stream --use-file-for-fake-video-capture=<file>.y4m` (playwright-cli `--config` with `browser.launchOptions.args`). Make the y4m with ffmpeg (e.g. a `crop` that pans over a fixture photo); playwright-cli screenshots must be saved under the repo (`.playwright-cli/`, git-ignored). The first worker load in dev can trigger a Vite dependency re-optimisation and a page reload: just retry.
+- **Fast registration (`register`) is up to ~25px off on some frames.** Fine for detection; not for the board scan's median, which is why scan frames get a `track(…, 12000, 24)` polish pass.
 - **OpenCV.js (`@techstark/opencv-js`)** only has **ORB** for features: no AKAZE/SIFT/ArUco. Load it via `loadCv()` in `src/vision/cv.ts`.
 - `new cv.Mat(h, w, type)` is **not zero-initialized**. Use `cv.Mat.zeros(...)` for masks. (This caused a "0 blobs" bug.)
 - Every `cv.Mat` / vector must be `.delete()`d. WASM memory isn't garbage collected.
@@ -159,6 +184,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - `fixtures-raw/` holds the original photos **with GPS EXIF**. It's git-ignored; never commit it. `reports/` is git-ignored too: regenerate it.
 
 ## Session log
+- **2026-11-03 (b)**: D35 agreed. M4 app shell (subagent) + M5 sweep/scan/live arrow; sweep consensus with majority vote; on-phone scan needs polish + 1 frame/s; fake-camera browser tests pass in dev and production builds.
 - **2026-11-03**: Phone bench on the user's iPhone: snapshot ≤1.34s, tracking ≤96ms (targets met). Bench page now confirms each queued run.
 - **2026-11-02 (g)**: Multi-view check (0 false positives); registration 6.6× faster, detection 6× faster; live `track()`; bench page. Waiting for the phone bench run.
 - **2026-11-02 (f)**: User confirmed tracks/france.json; on-space filter (black FPs −70%); silver edge cue (silver 10/13, FPs roughly halved).
