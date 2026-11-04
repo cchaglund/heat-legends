@@ -1,0 +1,97 @@
+/* Chequered Flag: black and white only, square corners, racing italics. The
+   cars are the only colour on screen, so they can't be confused with chrome.
+   A chequered strip marks titles and the scan progress. Depth: solid black
+   rules; the 2px weight is the theme's voice, used everywhere alike. */
+:root[data-theme="chequered"] {
+  --bg: #fff;
+  --panel: #fff;
+  --panel-2: #f2f2f2;
+  --line: #000;
+  --text: #000;
+  --muted: #555;
+  --accent: #000;
+  --accent-2: #000;
+  --radius: 0;
+  --check: repeating-conic-gradient(#000 0 25%, #fff 0 50%) 0 0 / 12px 12px;
+  color-scheme: light;
+}
+:root[data-theme="chequered"] body { font: 500 17px/1.4 Barlow, "Helvetica Neue", Arial, sans-serif; }
+:root[data-theme="chequered"] h1 {
+  font: italic 800 48px/0.92 "Barlow Condensed", "Arial Narrow", sans-serif; text-transform: uppercase; letter-spacing: -0.01em;
+  margin: 4px 0 8px; padding-top: 24px;
+  background: var(--check); background-repeat: repeat-x;
+}
+:root[data-theme="chequered"] h2 { font: italic 800 15px "Barlow Condensed", sans-serif; letter-spacing: 0.08em; color: #000; }
+:root[data-theme="chequered"] .muted { color: var(--muted); }
+
+:root[data-theme="chequered"] .btn {
+  border: 2px solid #000; background: #fff; color: #000;
+  font: italic 800 19px/1.1 "Barlow Condensed", "Arial Narrow", sans-serif; text-transform: uppercase; letter-spacing: 0.02em;
+}
+:root[data-theme="chequered"] .btn:active { background: #000; color: #fff; filter: none; }
+:root[data-theme="chequered"] .btn.primary { background: #000; color: #fff; border-color: #000; }
+:root[data-theme="chequered"] .btn.primary:active { background: #333; }
+:root[data-theme="chequered"] .btn.big { min-height: 68px; font-size: 26px; }
+:root[data-theme="chequered"] .btn.danger { color: #000; border-style: dashed; }
+:root[data-theme="chequered"] .btn small { font: 500 14px Barlow, sans-serif; text-transform: none; }
+:root[data-theme="chequered"] .btn:disabled { opacity: 1; color: #aaa; border-color: #ccc; background: #fff; }
+:root[data-theme="chequered"] .link { color: #000; font: italic 800 17px "Barlow Condensed", sans-serif; text-transform: uppercase; }
+
+/* Setup */
+:root[data-theme="chequered"] .track-card {
+  padding: 0; gap: 0; border: 2px solid #000;
+  font: italic 800 32px/1 "Barlow Condensed", sans-serif; text-transform: uppercase; text-align: left;
+}
+:root[data-theme="chequered"] .track-card img { border-radius: 0; border-bottom: 2px solid #000; }
+:root[data-theme="chequered"] .track-card span { padding: 12px 16px; }
+:root[data-theme="chequered"] .area { border: 2px solid #000; }
+:root[data-theme="chequered"] .area-legend { background: #000; color: #fff; }
+:root[data-theme="chequered"] .area-legend h2 { color: #fff; }
+:root[data-theme="chequered"] .area-out { opacity: 1; border-style: dashed; }
+:root[data-theme="chequered"] .chip { border: 2px solid #000; border-radius: 0; background: #fff; color: #000; font: italic 800 18px "Barlow Condensed", sans-serif; text-transform: uppercase; }
+:root[data-theme="chequered"] .area-legend .chip { border-color: #fff; }
+:root[data-theme="chequered"] .chip.selected { background: #000; color: #fff; box-shadow: 0 0 0 2px #fff, 0 0 0 4px #000; }
+
+/* Race: a giant round number. */
+:root[data-theme="chequered"] .race-bar { border-bottom: 2px solid #000; padding-bottom: 8px; }
+:root[data-theme="chequered"] .race-bar .round { align-items: flex-end; }
+:root[data-theme="chequered"] .race-bar .round small { font: italic 800 20px "Barlow Condensed", sans-serif; text-transform: uppercase; }
+:root[data-theme="chequered"] .race-bar .round b { font: italic 800 80px/0.8 "Barlow Condensed", sans-serif; }
+:root[data-theme="chequered"] .legend-btn { border: 2px solid #000; border-radius: 0; min-height: 84px; }
+:root[data-theme="chequered"] .legend-btn b { font: italic 800 28px/0.95 "Barlow Condensed", sans-serif; text-transform: uppercase; }
+:root[data-theme="chequered"] .legend-btn.todo { box-shadow: inset 0 0 0 3px #fff; }
+:root[data-theme="chequered"] .legend-btn.moved { background: #fff; color: #000; }
+:root[data-theme="chequered"] .legend-btn.moved b { color: #aaa; }
+:root[data-theme="chequered"] .race-divider { display: none; }
+:root[data-theme="chequered"] .fold { border: 2px solid #000; }
+:root[data-theme="chequered"] .fold summary { color: #000; font: italic 800 19px "Barlow Condensed", sans-serif; text-transform: uppercase; }
+:root[data-theme="chequered"] .card-table th { color: #000; font: italic 800 13px "Barlow Condensed", sans-serif; text-transform: uppercase; }
+:root[data-theme="chequered"] .card-table td { border-top: 2px solid #000; padding: 8px 0; }
+:root[data-theme="chequered"] .card-table td + td { font: italic 800 32px/1 "Barlow Condensed", sans-serif; }
+:root[data-theme="chequered"] .log li { background: #fff; border: 2px solid #000; border-radius: 0; }
+
+/* Tap mode, sheets, banner */
+:root[data-theme="chequered"] .tap-bar { border-bottom: 2px solid #000; }
+:root[data-theme="chequered"] .tap-bar h1 { font-size: 32px; padding: 0; background: none; }
+:root[data-theme="chequered"] .tap-panel { background: #fff; border-top: 2px solid #000; }
+:root[data-theme="chequered"] .move-head { font: italic 800 26px "Barlow Condensed", sans-serif; text-transform: uppercase; }
+:root[data-theme="chequered"] .sheet-backdrop { background: rgba(255, 255, 255, 0.7); }
+:root[data-theme="chequered"] .sheet { position: relative; background: #fff; border-radius: 0; }
+:root[data-theme="chequered"] .sheet::before { content: ""; position: absolute; left: 0; right: 0; top: -12px; height: 12px; background: var(--check); background-repeat: repeat-x; }
+:root[data-theme="chequered"] .sheet h2 { font: italic 800 34px "Barlow Condensed", sans-serif; text-transform: uppercase; color: #000; }
+:root[data-theme="chequered"] .update-banner { background: #000; color: #fff; font: italic 800 18px "Barlow Condensed", sans-serif; text-transform: uppercase; }
+:root[data-theme="chequered"] .update-banner .btn { background: #000; color: #fff; border-color: #fff; min-height: 36px; font-size: 16px; }
+:root[data-theme="chequered"] .update-banner .btn.primary { background: #fff; color: #000; }
+
+/* Camera: white bars, black type; the progress bar fills with chequers. */
+:root[data-theme="chequered"] .cam-top, :root[data-theme="chequered"] .cam-bottom { background: #fff; color: #000; }
+:root[data-theme="chequered"] .cam-top { border-bottom: 2px solid #000; }
+:root[data-theme="chequered"] .cam-top b { font: italic 800 30px/1 "Barlow Condensed", sans-serif; text-transform: uppercase; }
+:root[data-theme="chequered"] .cam-bottom { border-top: 2px solid #000; }
+:root[data-theme="chequered"] .cam-msg.warn { color: #000; font-weight: 600; padding-left: 12px; border-left: 4px solid #000; }
+:root[data-theme="chequered"] .cam-progress { height: 14px; border-radius: 0; border: 2px solid #000; background: #fff; }
+:root[data-theme="chequered"] .cam-progress > div { background: var(--check); }
+:root[data-theme="chequered"] .cam-map { background: #fff; border: 2px solid #000; border-radius: 0; }
+:root[data-theme="chequered"] .cam-dialog { background: #fff; border: 2px solid #000; border-radius: 0; box-shadow: 8px 8px 0 #000; padding-top: 36px; }
+:root[data-theme="chequered"] .cam-dialog::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 12px; background: var(--check); background-repeat: repeat-x; }
+:root[data-theme="chequered"] .cam-dialog h2 { font: italic 800 36px/1 "Barlow Condensed", sans-serif; text-transform: uppercase; color: #000; }

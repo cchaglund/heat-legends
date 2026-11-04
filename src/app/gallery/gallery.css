@@ -9,3 +9,15 @@
   .gallery { padding: 16px; }
   .gallery figure, .gallery iframe { width: 100%; }
 }
+.theme-bar { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 16px; }
+.theme-bar a {
+  padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px;
+  color: var(--text); text-decoration: none; font-size: 15px; font-weight: 600;
+}
+.theme-bar a.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+.compare-row { margin-top: 40px; }
+.compare-row h2 { color: var(--text); font-size: 20px; text-transform: none; letter-spacing: 0; }
+.compare-row h2 code { color: var(--muted); font-size: 14px; font-weight: 400; margin-left: 8px; }
+.compare-row > p { max-width: 720px; margin: 0 0 12px; }
+.compare-strip { display: flex; gap: 24px; overflow-x: auto; padding-bottom: 12px; }
+.compare-strip iframe { flex: none; }

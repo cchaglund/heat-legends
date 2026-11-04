@@ -1,0 +1,94 @@
+/* Race Programme: a 1960s race-day programme, in the spirit of the game's box
+   art. Cream paper, warm ink, serif display figures, condensed caps for
+   anything you tap. Petrol is the one accent. Depth: ink rules, no shadows. */
+:root[data-theme="programme"] {
+  --bg: #f1e9d8;
+  --panel: #f8f3e8;
+  --panel-2: #e8dec8;
+  --line: #cbbd9e;
+  --ink: #1d1a16;
+  --text: #1d1a16;
+  --muted: #6b6253;
+  --faint: #a1957c;
+  --accent: #12505e;
+  --accent-2: #b8862b;
+  --radius: 4px;
+  color-scheme: light;
+}
+:root[data-theme="programme"] body { font: 17px/1.45 "Source Serif 4", Georgia, "Times New Roman", serif; }
+:root[data-theme="programme"] h1 {
+  font: 400 36px/1.05 "DM Serif Display", Georgia, serif; letter-spacing: -0.01em; margin: 8px 0 4px;
+  padding-bottom: 12px; border-bottom: 3px double var(--ink);
+}
+:root[data-theme="programme"] h2 { font: 600 13px/1.2 Oswald, "Arial Narrow", sans-serif; letter-spacing: 0.18em; color: var(--muted); }
+:root[data-theme="programme"] .muted { color: var(--muted); }
+
+:root[data-theme="programme"] .btn {
+  background: transparent; border-color: var(--ink); color: var(--ink);
+  font: 600 16px/1.2 Oswald, "Arial Narrow", sans-serif; text-transform: uppercase; letter-spacing: 0.1em;
+}
+:root[data-theme="programme"] .btn:active { background: var(--panel-2); filter: none; }
+:root[data-theme="programme"] .btn.primary { background: var(--accent); border-color: var(--accent); color: #f8f3e8; }
+:root[data-theme="programme"] .btn.big { font-size: 19px; }
+:root[data-theme="programme"] .btn.danger { border-color: #8c2f1f; color: #8c2f1f; }
+:root[data-theme="programme"] .btn small { font: italic 400 14px "Source Serif 4", Georgia, serif; text-transform: none; letter-spacing: 0; opacity: 0.85; }
+:root[data-theme="programme"] .link { font: 600 14px Oswald, "Arial Narrow", sans-serif; text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent); }
+
+/* Setup */
+:root[data-theme="programme"] .track-card {
+  background: var(--panel); border-color: var(--ink); padding: 12px; gap: 12px;
+  font: 400 26px/1 "DM Serif Display", Georgia, serif; color: var(--ink); text-align: left;
+}
+:root[data-theme="programme"] .track-card img { border-radius: 0; border: 1px solid var(--line); }
+:root[data-theme="programme"] .area { background: var(--panel); border-color: var(--line); }
+:root[data-theme="programme"] .area-legend { border-color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
+:root[data-theme="programme"] .area-legend h2 { color: var(--accent); }
+:root[data-theme="programme"] .area-out { opacity: 0.7; }
+:root[data-theme="programme"] .chip {
+  background: var(--bg); border-color: var(--ink); color: var(--ink);
+  font: 600 15px Oswald, "Arial Narrow", sans-serif; text-transform: uppercase; letter-spacing: 0.08em;
+}
+:root[data-theme="programme"] .chip.selected { background: var(--ink); color: var(--bg); box-shadow: none; }
+
+/* Race: the round as a big italic figure, like a programme's lap chart. */
+:root[data-theme="programme"] .race-bar { padding-bottom: 12px; border-bottom: 3px double var(--ink); }
+:root[data-theme="programme"] .race-bar .round small { font: 600 13px Oswald, sans-serif; text-transform: uppercase; letter-spacing: 0.18em; color: var(--muted); }
+:root[data-theme="programme"] .race-bar .round b { font: italic 400 56px/0.9 "DM Serif Display", Georgia, serif; }
+:root[data-theme="programme"] .legend-btn { border-width: 1px; border-color: var(--ink); border-radius: var(--radius); min-height: 80px; }
+:root[data-theme="programme"] .legend-btn b { font: 400 24px/1.05 "DM Serif Display", Georgia, serif; }
+:root[data-theme="programme"] .legend-btn small { font-style: italic; }
+:root[data-theme="programme"] .legend-btn.todo { color: var(--ink); }
+:root[data-theme="programme"] .legend-btn.todo small { color: var(--ink); }
+:root[data-theme="programme"] .legend-btn.moved { background: transparent; border-color: var(--line); color: var(--muted); }
+:root[data-theme="programme"] .legend-btn.moved b { text-decoration: line-through; text-decoration-thickness: 1px; }
+:root[data-theme="programme"] .race-divider { border-top: 1px solid var(--line); }
+:root[data-theme="programme"] .fold { background: var(--panel); border-color: var(--line); }
+:root[data-theme="programme"] .fold summary { font: 600 14px Oswald, sans-serif; text-transform: uppercase; letter-spacing: 0.12em; }
+:root[data-theme="programme"] .card-table th { font: 600 11px Oswald, sans-serif; text-transform: uppercase; letter-spacing: 0.14em; }
+:root[data-theme="programme"] .card-table td { border-top: 1px solid var(--line); padding: 8px 0; }
+:root[data-theme="programme"] .card-table td + td { font: italic 400 26px "DM Serif Display", Georgia, serif; }
+:root[data-theme="programme"] .log li { background: transparent; border-left: 3px solid var(--line); border-radius: 0; padding: 4px 12px; }
+
+/* Tap mode, sheets, banner */
+:root[data-theme="programme"] .tap-bar { border-bottom: 1px solid var(--ink); }
+:root[data-theme="programme"] .tap-bar h1 { font-size: 24px; border: 0; padding: 0; }
+:root[data-theme="programme"] .tap-panel { background: var(--bg); border-top: 3px double var(--ink); }
+:root[data-theme="programme"] .move-head { font: 400 22px "DM Serif Display", Georgia, serif; }
+:root[data-theme="programme"] .sheet-backdrop { background: rgba(29, 26, 22, 0.55); }
+:root[data-theme="programme"] .sheet { background: var(--bg); border-radius: 4px 4px 0 0; border-top: 3px double var(--ink); }
+:root[data-theme="programme"] .sheet h2 { font: 400 28px "DM Serif Display", Georgia, serif; letter-spacing: 0; color: var(--ink); }
+:root[data-theme="programme"] .update-banner { background: var(--ink); color: var(--bg); font: 600 14px Oswald, sans-serif; text-transform: uppercase; letter-spacing: 0.12em; }
+:root[data-theme="programme"] .update-banner .btn { background: transparent; border-color: var(--bg); color: var(--bg); min-height: 36px; font-size: 13px; }
+:root[data-theme="programme"] .update-banner .btn.primary { background: var(--bg); color: var(--ink); }
+
+/* Camera: paper strips over the picture, so it reads like a printed caption. */
+:root[data-theme="programme"] .cam-top, :root[data-theme="programme"] .cam-bottom { background: rgba(241, 233, 216, 0.95); color: var(--ink); }
+:root[data-theme="programme"] .cam-top { border-bottom: 3px double var(--ink); }
+:root[data-theme="programme"] .cam-top b { font: 400 24px "DM Serif Display", Georgia, serif; color: var(--ink) !important; }
+:root[data-theme="programme"] .cam-bottom { border-top: 3px double var(--ink); }
+:root[data-theme="programme"] .cam-msg.warn { color: #8c4a12; font-style: italic; }
+:root[data-theme="programme"] .cam-progress { height: 6px; border-radius: 0; background: var(--panel-2); }
+:root[data-theme="programme"] .cam-progress > div { background: var(--accent); }
+:root[data-theme="programme"] .cam-map { background: rgba(241, 233, 216, 0.92); border: 1px solid var(--ink); border-radius: 0; }
+:root[data-theme="programme"] .cam-dialog { background: var(--bg); color: var(--ink); border: 1px solid var(--ink); border-radius: 4px; box-shadow: 6px 6px 0 rgba(29, 26, 22, 0.85); }
+:root[data-theme="programme"] .cam-dialog h2 { font: 400 30px "DM Serif Display", Georgia, serif; letter-spacing: 0; color: var(--ink); }

@@ -7,6 +7,8 @@
 
 ## Current focus
 
+**2026-11-04 (c, latest): five design proposals waiting for the user's pick.** `src/app/themes/` holds five CSS-only themes over the unchanged markup (Pit Wall, Race Programme, Chequered Flag, Night Race, Game Night), scoped under `:root[data-theme]`, chosen with `?theme=<id>` (remembered in the real app; `?theme=default` forgets). Compare page: `/?gallery&compare`; one theme on every state: `/?gallery&theme=<id>`. Fonts load from Google Fonts for now. **When the user picks one** (or a mix): fold that theme's rules into `app.css`/`camera.css` as the default, self-host its fonts (offline PWA), update `index.html`/`vite.config` theme-color, and delete `src/app/themes/` with the `?theme` plumbing in `main.tsx` and the gallery. Gotcha: a theme's `h2` rule out-ranks `.sheet h2`/`.cam-dialog h2`, so those need explicit sizes per theme.
+
 **2026-11-04 (latest): all four tracks are annotated and in the app** (France, Great Britain 63 spaces/5 corners, Italy 54/3, USA 69/4; user-checked in the annotator, each validated: space count = the number in the board's info box, every spot centre on the road). **Next: the user play-tests GB, Italy and USA on the real boards** (board scan + a few rounds); there are no fixture photos of them. Watch for: green car on GB's green-grey road, red car on USA's red-brown road. Annotator additions this session: `PORT` env, corner speeds up to 15 (GB has a 10), typing a speed makes a line a corner, the raceline flip stops at the finish (it used to wrap round the loop), a "reverse direction" button, and a refused save is kept as the draft (`reports/boundaries/<track>.json`) so a reload doesn't lose work.
 
 **2026-11-03 (latest): D36 built: rescan suggestion after 2 failed sweeps + mid-race rescan with the cars on the board (`ScanBoard rescan`, worker `reset {rescan}`, `ScanAccumulator.excludeBox/markCandidate`). Gallery feedback round 1 applied (race screen: Legends first, filled = not moved, card + history folded; scan-complete dialog; crimson primary buttons). Waiting on the user's play-test.**
@@ -204,6 +206,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - `fixtures-raw/` holds the original photos **with GPS EXIF**. It's git-ignored; never commit it. `reports/` is git-ignored too: regenerate it.
 
 ## Session log
+- **2026-11-04 (c)**: User asked for 5 bold UI directions (design-principles skill): built as switchable themes + gallery compare page; default look unchanged.
 - **2026-11-04 (b)**: User annotated GB, Italy, USA (annotator fixes: speeds ≤15, speed ⇒ corner, flip stops at finish, reverse button, refused save kept as draft); all three shipped.
 - **2026-11-04 (a)**: User: move on to the other maps. Boundary drafts for GB/Italy/USA (per-track asphalt test, "boundary must cross the road" check, relaxed finish check); detection track mask from annotation quads; app lists tracks from `tracks/*.json`.
 - **2026-11-03 (e)**: Crimson primary buttons + divider (user). D36: rescan suggestion after 2 failed sweeps, mid-race rescan with cars on the board (old scan kept near known/detected cars); light-change statistic tried and dropped; rescan simulated (`RESCAN_FROM`) and browser-tested.

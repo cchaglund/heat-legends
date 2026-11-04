@@ -1,0 +1,98 @@
+/* Night Race: a floodlit street circuit. Deep navy surfaces stacked by tint
+   and layered shadow, frosted panels that float over the camera picture,
+   electric cyan as the one accent. Soft radius system: 8 / 12 / 20. */
+:root[data-theme="nightrace"] {
+  --bg: #0b1020;
+  --panel: #121a2e;
+  --panel-2: #1a2440;
+  --line: rgba(148, 170, 255, 0.14);
+  --line-strong: rgba(148, 170, 255, 0.24);
+  --text: #e8ecf8;
+  --muted: #8a94b2;
+  --faint: #5a6482;
+  --accent: #22d3ee;
+  --accent-ink: #04202a;
+  --accent-2: #fbbf24;
+  --radius: 12px;
+  --shadow: 0 0 0 1px rgba(148, 170, 255, 0.08), 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.25);
+  --glass: rgba(14, 20, 38, 0.72);
+}
+:root[data-theme="nightrace"] body {
+  font: 500 16px/1.5 Manrope, system-ui, -apple-system, sans-serif;
+  background: radial-gradient(120% 60% at 50% -10%, #1b2a55 0%, var(--bg) 60%) fixed, var(--bg);
+}
+:root[data-theme="nightrace"] h1 { font-size: 30px; font-weight: 800; letter-spacing: -0.03em; margin: 8px 0 4px; }
+:root[data-theme="nightrace"] h2 { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; color: var(--muted); }
+
+:root[data-theme="nightrace"] .btn {
+  border: 0; background: var(--panel-2); box-shadow: var(--shadow); font-weight: 700; letter-spacing: -0.01em;
+  transition: transform 150ms cubic-bezier(0.25, 1, 0.5, 1), background 150ms;
+}
+:root[data-theme="nightrace"] .btn:active { transform: scale(0.98); filter: none; background: #22305a; }
+:root[data-theme="nightrace"] .btn.primary {
+  background: var(--accent); color: var(--accent-ink);
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.5), 0 4px 16px rgba(34, 211, 238, 0.28), 0 12px 32px rgba(34, 211, 238, 0.14);
+}
+:root[data-theme="nightrace"] .btn.primary small { color: var(--accent-ink); opacity: 0.75; }
+:root[data-theme="nightrace"] .btn.big { border-radius: 16px; font-size: 18px; }
+:root[data-theme="nightrace"] .btn.danger { background: rgba(248, 113, 113, 0.1); color: #fca5a5; box-shadow: inset 0 0 0 1px rgba(248, 113, 113, 0.3); }
+:root[data-theme="nightrace"] .btn small { color: var(--muted); opacity: 1; font-weight: 500; }
+:root[data-theme="nightrace"] .btn:disabled { opacity: 0.35; box-shadow: none; }
+:root[data-theme="nightrace"] .link { color: var(--accent); font-weight: 600; }
+
+/* Setup */
+:root[data-theme="nightrace"] .track-card { border: 0; box-shadow: var(--shadow); padding: 8px; gap: 8px; font-weight: 800; letter-spacing: -0.02em; text-align: left; border-radius: 20px; }
+:root[data-theme="nightrace"] .track-card img { border-radius: 12px; }
+:root[data-theme="nightrace"] .track-card span { padding: 4px 8px 8px; }
+:root[data-theme="nightrace"] .area { border: 0; box-shadow: var(--shadow); border-radius: 16px; }
+:root[data-theme="nightrace"] .area-legend { box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.45), 0 8px 32px rgba(34, 211, 238, 0.12); }
+:root[data-theme="nightrace"] .area-legend h2 { color: var(--accent); }
+:root[data-theme="nightrace"] .area-out { opacity: 0.65; background: transparent; box-shadow: inset 0 0 0 1px var(--line); }
+:root[data-theme="nightrace"] .chip { border: 0; background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--line-strong); font-weight: 700; }
+:root[data-theme="nightrace"] .chip.selected { box-shadow: inset 0 0 0 2px var(--accent), 0 0 16px rgba(34, 211, 238, 0.3); }
+
+/* Race */
+:root[data-theme="nightrace"] .race-bar .round small { color: var(--muted); font-weight: 600; }
+:root[data-theme="nightrace"] .race-bar .round b { font-size: 44px; font-weight: 800; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+:root[data-theme="nightrace"] .legends { gap: 12px; }
+:root[data-theme="nightrace"] .legend-btn { border: 0; border-radius: 16px; min-height: 84px; padding: 12px 16px; box-shadow: var(--shadow); }
+:root[data-theme="nightrace"] .legend-btn b { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
+:root[data-theme="nightrace"] .legend-btn.todo {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 50%), var(--car);
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--car) 40%, transparent), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+}
+:root[data-theme="nightrace"] .legend-btn.moved { background: var(--panel); color: var(--text); }
+:root[data-theme="nightrace"] .legend-btn.moved .swatch { box-shadow: 0 0 12px var(--car) !important; width: 14px !important; height: 14px !important; }
+:root[data-theme="nightrace"] .race-divider { border-top-color: var(--line); }
+:root[data-theme="nightrace"] .fold { border: 0; box-shadow: var(--shadow); border-radius: 16px; }
+:root[data-theme="nightrace"] .card-table th { font-weight: 600; }
+:root[data-theme="nightrace"] .card-table td + td { font-weight: 800; font-variant-numeric: tabular-nums; }
+:root[data-theme="nightrace"] .log li { background: var(--panel-2); border-radius: 8px; }
+
+/* Tap mode, sheets, banner */
+:root[data-theme="nightrace"] .tap-bar h1 { font-weight: 800; letter-spacing: -0.02em; }
+:root[data-theme="nightrace"] .tap-panel { background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 1px solid var(--line-strong); border-radius: 20px 20px 0 0; margin-top: -20px; position: relative; }
+:root[data-theme="nightrace"] .sheet-backdrop { background: rgba(5, 8, 18, 0.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+:root[data-theme="nightrace"] .sheet { border-radius: 24px 24px 0 0; box-shadow: var(--shadow); border-top: 1px solid var(--line-strong); }
+:root[data-theme="nightrace"] .sheet h2, :root[data-theme="nightrace"] .cam-dialog h2 { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; text-transform: none; color: var(--text); }
+:root[data-theme="nightrace"] .update-banner { background: var(--accent); color: var(--accent-ink); }
+:root[data-theme="nightrace"] .update-banner .btn { background: var(--accent-ink); color: var(--accent); min-height: 36px; box-shadow: none; }
+:root[data-theme="nightrace"] .update-banner .btn.primary { background: #fff; color: var(--accent-ink); }
+
+/* Camera: frosted cards floating over the picture, not full-width bars. */
+:root[data-theme="nightrace"] .cam-top, :root[data-theme="nightrace"] .cam-bottom {
+  left: 12px; right: 12px; padding: 16px; border-radius: 20px;
+  background: var(--glass); backdrop-filter: blur(20px) saturate(1.4); -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  box-shadow: var(--shadow); border: 1px solid var(--line-strong);
+}
+:root[data-theme="nightrace"] .cam-top { top: max(12px, env(safe-area-inset-top)); }
+:root[data-theme="nightrace"] .cam-top b { font-size: 20px; font-weight: 800; }
+:root[data-theme="nightrace"] .cam-bottom { bottom: max(12px, env(safe-area-inset-bottom)); }
+:root[data-theme="nightrace"] .cam-msg.warn { color: var(--accent-2); }
+:root[data-theme="nightrace"] .cam-progress { height: 6px; background: rgba(255, 255, 255, 0.1); }
+:root[data-theme="nightrace"] .cam-progress > div { background: var(--accent); box-shadow: 0 0 12px var(--accent); }
+:root[data-theme="nightrace"] .cam-map {
+  top: calc(max(12px, env(safe-area-inset-top)) + 128px); right: 20px;
+  background: var(--glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-radius: 12px; border: 1px solid var(--line-strong);
+}
+:root[data-theme="nightrace"] .cam-dialog { border-radius: 24px; background: var(--glass); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid var(--line-strong); }
