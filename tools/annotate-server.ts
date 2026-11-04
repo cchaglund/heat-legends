@@ -189,9 +189,10 @@ $('speed').oninput = (e) => {
 $('legends').onchange = (e) => { setTag(B[sel], 'legends', e.target.checked); draw(); };
 $('finish').onchange = (e) => { setTag(B[sel], 'finish', e.target.checked); draw(); };
 function flip() {
-  // flip spaces sel… up to (not including) the next space whose side already differs
-  const n = B.length, old = B[sel].raceline, now = old === 'a' ? 'b' : 'a';
-  for (let k = 0; k < n && B[(sel + k) % n].raceline === old; k++) B[(sel + k) % n].raceline = now;
+  // flip spaces sel… up to (not including) the next space whose side already
+  // differs, or the finish: wrapping round would flip the whole loop
+  const old = B[sel].raceline, now = old === 'a' ? 'b' : 'a';
+  for (let i = sel; i < B.length && B[i].raceline === old; i++) B[i].raceline = now;
   draw();
 }
 $('flip').onclick = flip;
