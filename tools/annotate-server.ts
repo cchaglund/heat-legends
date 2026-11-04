@@ -18,7 +18,7 @@ import { deriveTrack } from "../src/engine/track";
 import type { TrackAnnotation } from "../src/engine/types";
 
 const track = process.argv[2] ?? "france";
-const PORT = 4610;
+const PORT = Number(process.env.PORT ?? 4610);
 const REF_WIDTH = 2000;
 const OUT = join("tracks", `${track}.json`);
 
