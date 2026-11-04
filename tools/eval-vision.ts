@@ -32,7 +32,9 @@ const cv = await loadCv();
 const refRgb = await loadRgb(join("circuits", `${track}.png`), REF_WIDTH);
 const ref = prepareReference(cv, toGray(refRgb));
 const detectRef = process.env.DETECT_REF ? await loadRgb(process.env.DETECT_REF) : refRgb;
-const model = buildReferenceModel(cv, detectRef);
+// ROAD=quads: the track mask from tracks/<track>.json, as the app does.
+const road = process.env.ROAD === "quads" ? deriveTrack(JSON.parse(await readFile(join("tracks", `${track}.json`), "utf8"))).spaces.map((s) => s.quad) : undefined;
+const model = buildReferenceModel(cv, detectRef, road);
 console.log(`detection reference: ${process.env.DETECT_REF ?? "BGG scan"}\n`);
 
 // SPACES=1: only blobs whose centre is on a space of tracks/<track>.json.

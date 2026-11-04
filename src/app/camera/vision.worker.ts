@@ -78,7 +78,7 @@ async function handle(req: Request): Promise<unknown> {
       board = req.track;
       samples = board.spaces.map((s) => [spotCenter(board, { space: s.index, spot: 0 }), spotCenter(board, { space: s.index, spot: 1 })]);
       current = req.scan ? await decode(req.scan, Infinity) : base;
-      model = buildReferenceModel(cv, current);
+      model = buildReferenceModel(cv, current, roadOf(board));
       prevH = null;
       return { ownBoard: !!req.scan };
     }
@@ -93,13 +93,15 @@ async function handle(req: Request): Promise<unknown> {
       if (!scan) throw new Error("no scan in progress");
       const img = scan.build();
       current = img;
-      model = buildReferenceModel(cv, img);
+      model = buildReferenceModel(cv, img, roadOf(board));
       return await encodeJpeg(img);
     }
     case "frame":
       return frame(req.mode, req.frame, req.colors ?? []);
   }
 }
+
+const roadOf = (t: Track) => t.spaces.map((s) => s.quad);
 
 function frame(mode: Mode, bitmap: ImageBitmap, colors: CarColor[]): FrameResult {
   const t0 = performance.now();

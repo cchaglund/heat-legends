@@ -15,8 +15,24 @@ import type { TrackAnnotation } from "../src/engine/types";
 import { loadRgb } from "./lib/images";
 
 const [track = "france"] = process.argv.slice(2);
-const MIN_DEPTH = 9; // px from the road edge: drops the edge lines
 const MIN_LEN = 35;
+// Each print has its own asphalt colour; France's grey test came first.
+// `light` = brighter than this counts as line paint, not asphalt.
+const ASPHALT: Record<string, { is: (r: number, g: number, b: number) => boolean; light: number; close?: number; depth?: number }> = {
+  france: { is: (r, g, b) => Math.max(r, g, b) < 97 && Math.max(r, g, b) - Math.min(r, g, b) < 33, light: 105 },
+  // The woods inside the loop are as dark, but less blue.
+  "great-britain": { is: (r, g, b) => near(56, 66, 58, 34)(r, g, b) && b >= g - 12, light: 115 },
+  // Warm grey; the buildings by the grid are neutral grey.
+  // Its inner edge stripe ends up inside the closed road: skip deeper.
+  italy: { is: (r, g, b) => near(128, 114, 96, 32)(r, g, b) && r - b >= 18, light: 170, depth: 13 },
+  // Dark brown, shading to near-black red along the bottom straight.
+  usa: { is: (r, g, b) => Math.max(r, g, b) < 95 && r - Math.min(g, b) < 50 && r >= g && g >= b - 8, light: 110 },
+};
+// depth = px from the road edge a line must reach: drops the edge stripes.
+const { is: isAsphalt, light: LIGHT, close: CLOSE = 15, depth: MIN_DEPTH = 9 } = ASPHALT[track];
+function near(r0: number, g0: number, b0: number, tol: number) {
+  return (r: number, g: number, b: number) => Math.hypot(r - r0, g - g0, b - b0) < tol;
+}
 
 const cv = await loadCv();
 const ref = await loadRgb(join("circuits", `${track}.png`), 2000);
@@ -29,15 +45,16 @@ const white = new Uint8Array(n);
 for (let i = 0, j = 0; i < n; i++, j += 3) {
   const max = Math.max(data[j], data[j + 1], data[j + 2]);
   const chroma = max - Math.min(data[j], data[j + 1], data[j + 2]);
-  asphalt.data[i] = max < 97 && chroma < 33 ? 255 : 0;
+  asphalt.data[i] = isAsphalt(data[j], data[j + 1], data[j + 2]) ? 255 : 0;
   const tan = max > 150 && chroma >= 40 && chroma < 130 && data[j] >= data[j + 1] && data[j + 1] > data[j + 2];
   white[i] = max > 150 && chroma < 50 ? 1 : tan ? 2 : 0;
 }
 const k = (s: number) => cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(s, s));
 const closed = new cv.Mat(), road = new cv.Mat();
-cv.morphologyEx(asphalt, closed, cv.MORPH_CLOSE, k(15));
+cv.morphologyEx(asphalt, closed, cv.MORPH_CLOSE, k(CLOSE));
 cv.morphologyEx(closed, road, cv.MORPH_OPEN, k(9));
 keepBig(road);
+if (process.env.ROAD_PNG) await sharp(Buffer.from(road.data), { raw: { width, height, channels: 1 } }).png().toFile(process.env.ROAD_PNG);
 
 const dist = new cv.Mat();
 cv.distanceTransform(road, dist, cv.DIST_L2, 5);
@@ -51,7 +68,10 @@ for (const kind of [1, 2]) {
 // A boundary crosses the road: much longer edge-to-edge segments run along it (raceline).
 const medSpan = found.map(span).sort((p, q) => p - q)[found.length >> 1];
 // Grid-slot brackets cross only half the road.
-const crossing = found.filter((f) => span(f) < 1.4 * medSpan && coverage(f) >= 0.8);
+// A line across the road has its middle near the road's centre line; a stroke
+// lying along the road (a striped barrier on the verge) has it near an edge.
+const centred = (f: Boundary) => dist.data32F[Math.round((f.a[1] + f.b[1]) / 2) * width + Math.round((f.a[0] + f.b[0]) / 2)] >= 0.3 * span(f);
+const crossing = found.filter((f) => span(f) < 1.4 * medSpan && coverage(f) >= 0.8 && centred(f));
 // Merge bars on top of each other: the finish (white | checkers | white) and
 // a Legends Line printed on another boundary.
 const mid = (f: Boundary) => [(f.a[0] + f.b[0]) / 2, (f.a[1] + f.b[1]) / 2];
@@ -62,7 +82,12 @@ for (const f of [...crossing].sort((p, q) => Number(p.legends) - Number(q.legend
   const twin = kept.find((k) => Math.hypot(mid(k)[0] - mid(f)[0], mid(k)[1] - mid(f)[1]) < 22 || crosses(k, f));
   if (!twin) { kept.push({ ...f }); continue; }
   if (f.legends) twin.legends = true;
-  else if (Math.min(twin.len, f.len) > 0.7 * medLen && checkered(twin, f)) twin.finish = true;
+  else if (Math.max(twin.len, f.len) > 0.7 * medLen && checkered(twin, f)) twin.finish = true;
+}
+if (process.env.NEAR) {
+  const [nx, ny] = process.env.NEAR.split(",").map(Number);
+  for (const f of found) if (Math.hypot(mid(f)[0] - nx, mid(f)[1] - ny) < 120)
+    console.log("near", f.a, f.b, "len", f.len.toFixed(0), "span", span(f).toFixed(0), "cov", coverage(f).toFixed(2), "centred", centred(f), "crossing", crossing.includes(f), "kept", kept.some((k) => k.a === f.a || (k.a[0] === f.a[0] && k.a[1] === f.a[1])));
 }
 console.log(`${found.length} candidates, ${kept.length} kept (median span ${medSpan.toFixed(0)}px); legends ${kept.filter((f) => f.legends).length}, finish ${kept.filter((f) => f.finish).length}, thick ${kept.filter((f) => f.thickness > 6).length}`);
 
@@ -222,7 +247,7 @@ function coverage(f: Boundary): number {
     for (let o = -2; o <= 2; o++) {
       const x = Math.round(f.a[0] + t * ux - o * uy), y = Math.round(f.a[1] + t * uy + o * ux);
       const j = (y * width + x) * 3;
-      if (Math.max(data[j], data[j + 1], data[j + 2]) > 105) { hit++; break; }
+      if (Math.max(data[j], data[j + 1], data[j + 2]) > LIGHT) { hit++; break; }
     }
   }
   return tot ? hit / tot : 0;
@@ -232,12 +257,12 @@ function coverage(f: Boundary): number {
  *  changes along the middle between them. */
 function checkered(p: Boundary, q: Boundary): boolean {
   const a = [(p.a[0] + q.a[0]) / 2, (p.a[1] + q.a[1]) / 2], b = [(p.b[0] + q.b[0]) / 2, (p.b[1] + q.b[1]) / 2];
-  if (Math.hypot(mid(p)[0] - mid(q)[0], mid(p)[1] - mid(q)[1]) < 8) return false;
+  if (Math.hypot(mid(p)[0] - mid(q)[0], mid(p)[1] - mid(q)[1]) < 4) return false;
   const L = Math.hypot(b[0] - a[0], b[1] - a[1]);
   let changes = 0, last = -1;
   for (let t = 0; t <= L; t++) {
     const x = Math.round(a[0] + ((b[0] - a[0]) * t) / L), y = Math.round(a[1] + ((b[1] - a[1]) * t) / L);
-    const j = (y * width + x) * 3, light = Math.max(data[j], data[j + 1], data[j + 2]) > 128 ? 1 : 0;
+    const j = (y * width + x) * 3, light = Math.max(data[j], data[j + 1], data[j + 2]) > Math.max(128, LIGHT) ? 1 : 0;
     if (last >= 0 && light !== last) changes++;
     last = light;
   }

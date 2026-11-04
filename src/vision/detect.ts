@@ -87,22 +87,14 @@ const COLOUR = 1, DARK = 2, BRIGHT = 3;
 const HUE_CENTER: Partial<Record<CarColor, number>> = { red: 355, yellow: 55, green: 150, blue: 212 };
 const SPLIT_MIN_PX = 60;
 
-export function buildReferenceModel(cv: CV, ref: Rgb): ReferenceModel {
+/** `road`: the track's space quads (from the annotation) in reference px. Each
+ *  print has its own asphalt colour, so the grey-asphalt test below only
+ *  suits France; with quads the mask is exact for any board. */
+export function buildReferenceModel(cv: CV, ref: Rgb, road?: { x: number; y: number }[][]): ReferenceModel {
   const { width, height, data } = ref;
   const n = width * height;
-  const asphalt = new cv.Mat(height, width, cv.CV_8UC1);
-  // Mat.data is a getter that makes a new view each call: hoist it out of loops.
-  const asphaltData = asphalt.data;
-  for (let i = 0, j = 0; i < n; i++, j += 3) {
-    // Chroma, not saturation: saturation is unstable on near-black asphalt.
-    const max = Math.max(data[j], data[j + 1], data[j + 2]);
-    const chroma = max - Math.min(data[j], data[j + 1], data[j + 2]);
-    asphaltData[i] = max < 97 && chroma < 33 ? 255 : 0;
-  }
-  // Close over the white lane markings, drop speckles, then grow so cars
-  // whose tops stick out over the track edge still count.
-  const closed = morph(cv, asphalt, cv.MORPH_CLOSE, 15);
-  const opened = largestComponent(cv, morph(cv, closed, cv.MORPH_OPEN, 9, true));
+  const opened = road ? quadMask(cv, road, width, height) : asphaltMask(cv, ref);
+  // Grow so cars whose tops stick out over the track edge still count.
   const track = morph(cv, opened, cv.MORPH_DILATE, 25);
   const farFromTrack = morph(cv, opened, cv.MORPH_DILATE, 60);
   const blurred = toMat(cv, blur(cv, ref, 3));
@@ -133,7 +125,7 @@ export function buildReferenceModel(cv: CV, ref: Rgb): ReferenceModel {
     gradMax: localMaxGradient(cv, ref),
     background: new Uint8Array(farFromTrack.data).map((v) => (v ? 0 : 255)),
   };
-  [asphalt, opened, track, farFromTrack, blurred, k, lo, hi, chroma, chromaHi].forEach((m) => m.delete());
+  [opened, track, farFromTrack, blurred, k, lo, hi, chroma, chromaHi].forEach((m) => m.delete());
   return out;
 }
 
@@ -512,6 +504,35 @@ function toMat(cv: CV, img: Rgb): any {
   const m = new cv.Mat(img.height, img.width, cv.CV_8UC3);
   m.data.set(img.data);
   return m;
+}
+
+function asphaltMask(cv: CV, ref: Rgb): any {
+  const { width, height, data } = ref;
+  const asphalt = new cv.Mat(height, width, cv.CV_8UC1);
+  // Mat.data is a getter that makes a new view each call: hoist it out of loops.
+  const asphaltData = asphalt.data;
+  for (let i = 0, j = 0; i < width * height; i++, j += 3) {
+    // Chroma, not saturation: saturation is unstable on near-black asphalt.
+    const max = Math.max(data[j], data[j + 1], data[j + 2]);
+    const chroma = max - Math.min(data[j], data[j + 1], data[j + 2]);
+    asphaltData[i] = max < 97 && chroma < 33 ? 255 : 0;
+  }
+  // Close over the white lane markings, drop speckles.
+  const closed = morph(cv, asphalt, cv.MORPH_CLOSE, 15, true);
+  return largestComponent(cv, morph(cv, closed, cv.MORPH_OPEN, 9, true));
+}
+
+function quadMask(cv: CV, quads: { x: number; y: number }[][], width: number, height: number): any {
+  const out = cv.Mat.zeros(height, width, cv.CV_8UC1);
+  const polys = new cv.MatVector();
+  for (const q of quads) {
+    const m = cv.matFromArray(q.length, 1, cv.CV_32SC2, q.flatMap((p) => [Math.round(p.x), Math.round(p.y)]));
+    polys.push_back(m);
+    m.delete();
+  }
+  cv.fillPoly(out, polys, new cv.Scalar(255));
+  polys.delete();
+  return out;
 }
 
 function largestComponent(cv: CV, mask: any): any {
