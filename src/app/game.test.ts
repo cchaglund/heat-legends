@@ -46,19 +46,23 @@ describe("roles", () => {
 });
 
 describe("round flow", () => {
-  it("reveals the card on the first Legend tap only", () => {
+  it("starts each round with its card drawn; Legend taps don't draw", () => {
     let g = newGame("france", roles, cards, rng);
     expect(g.deck.round).toBe(1);
-    expect(g.deck.card).toBeNull();
-    g = tapLegend(g, "green", rng);
     const card = g.deck.card;
     expect(card).not.toBeNull();
-    const again = tapLegend(g, "red", rng);
-    expect(again).toBe(g); // no new undo step
+    expect(tapLegend(g, "green", rng)).toBe(g); // no new card, no undo step
     expect(tapLegend(g, "blue", rng)).toBe(g); // a human car isn't a Legend
-    g = startNextRound(g);
-    expect(g.deck.card).toBeNull();
-    expect(tapLegend(g, "red", rng).deck.card?.id).not.toBe(card!.id);
+    g = startNextRound(g, rng);
+    expect(g.deck.round).toBe(2);
+    expect(g.deck.card).not.toBeNull();
+    expect(g.deck.card!.id).not.toBe(card!.id);
+  });
+
+  it("a Legend tap still draws for a race saved before cards came with the round", () => {
+    const g = newGame("france", roles, cards, rng);
+    const old = { ...g, deck: { ...g.deck, card: null } };
+    expect(tapLegend(old, "green", rng).deck.card).not.toBeNull();
   });
 
   it("records a move and remembers positions", () => {
@@ -75,10 +79,10 @@ describe("round flow", () => {
 
   it("undoes one action at a time back to the start", () => {
     const g0 = newGame("france", roles, cards, rng);
-    const g1 = startNextRound(g0);
-    const g2 = tapLegend(g1, "green", rng);
     expect(g0.deck.round).toBe(1); // a race starts in round 1, with no undo step before it
-    const g3 = recordMove(g2, "green", move, {});
+    const g1 = recordMove(g0, "green", move, {});
+    const g2 = startNextRound(g1, rng);
+    const g3 = recordMove(g2, "red", move, {});
     expect(undo(g3)).toEqual(g2);
     expect(undo(undo(g3))).toEqual(g1);
     expect(undo(undo(undo(g3)))).toEqual(g0);

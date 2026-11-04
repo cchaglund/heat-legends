@@ -1,7 +1,7 @@
-// The round flow (D6, D38): the user walks the race order, tapping each
-// Legend's button when its turn comes; [Next round] unlocks once every Legend
-// has moved, with an "anyway" way out. The first Legend tap of a round reveals
-// the card (D4); every change can be undone.
+// The round flow (D6, D38, D39): the user walks the race order, tapping each
+// Legend's button when its turn comes. [Next round] is dashed and names who
+// is still to move until every Legend has moved, then solid; it works either
+// way. Each round starts with its card drawn; every change can be undone.
 import { useState } from "preact/hooks";
 import { spaceLabel } from "../../engine";
 import type { CarColor } from "../../engine";
@@ -68,16 +68,10 @@ export function RaceScreen({ onLegend, onEndRace, onRescan }: Props) {
 
       <hr class="race-divider" />
 
-      <div class="next-round">
-        <button class="btn primary wide big" disabled={!allMoved} onClick={() => update(startNextRound)}>
-          Next round ({round + 1})
-        </button>
-        {!allMoved && (
-          <button class="link" onClick={() => update(startNextRound)}>
-            Not all Legends have moved. Next round anyway ›
-          </button>
-        )}
-      </div>
+      <button class={`btn wide big next-round ${allMoved ? "primary" : "pending"}`} onClick={() => update((g) => startNextRound(g))}>
+        Next round ({round + 1})
+        {!allMoved && <small>{listNames(legends.filter((c) => !moved.has(c)))} still to move</small>}
+      </button>
 
       {card && (
         <details class="fold">
@@ -121,6 +115,12 @@ export function RaceScreen({ onLegend, onEndRace, onRescan }: Props) {
       )}
     </main>
   );
+}
+
+/** "Red", "Red and Yellow", "Red, Blue and Yellow". */
+function listNames(cs: CarColor[]): string {
+  const names = cs.map(carName);
+  return names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
 
 function LogLine({ entry: e, label }: { entry: LogEntry; label: (s: number) => string }) {

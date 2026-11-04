@@ -6,7 +6,7 @@ import { useLayoutEffect, useRef } from "preact/hooks";
 import { resolveLegendMove, spotCenter } from "../../engine";
 import type { Board, CarColor, LegendMove, Point, Position } from "../../engine";
 import { drawOverlay, MoveCameraView, ScanBoardView, type Found, type Phase, type ScanPhase } from "../camera";
-import { newGame, recordMove, startNextRound, tapLegend } from "../game";
+import { newGame, recordMove, startNextRound } from "../game";
 import type { GameState, Roles } from "../game";
 import { game } from "../store";
 import { LEGEND_CARDS, TRACKS } from "../tracks";
@@ -39,17 +39,16 @@ const roles: Roles = { red: "legend", blue: "legend", green: "human", yellow: "l
 const at = (space: number, spot: 0 | 1 = 0): Position => ({ space, spot });
 
 const fresh = newGame(info.id, roles, LEGEND_CARDS, seeded(1));
-const cardShown = tapLegend(fresh, "blue", seeded(2));
 const cardOf = (g: GameState) => g.deck.card!;
 
 // Round 1 played (both Legends moved), round 2 started with Blue moved.
 const midRace = (() => {
-  let g = cardShown;
+  let g = fresh;
   const b1: Board = { blue: at(8), yellow: at(3), red: at(9), green: at(5) };
   g = recordMove(g, "blue", resolveLegendMove(track, b1, "blue", cardOf(g)), b1);
   const b2: Board = { ...g.positions };
   g = recordMove(g, "yellow", resolveLegendMove(track, b2, "yellow", cardOf(g)), b2);
-  g = tapLegend(startNextRound(g), "blue", seeded(3));
+  g = startNextRound(g, seeded(3));
   const b3: Board = { ...g.positions, red: at(16), green: at(15) };
   return recordMove(g, "blue", resolveLegendMove(track, b3, "blue", cardOf(g)), b3);
 })();
@@ -62,11 +61,11 @@ const allMoved = (["red", "yellow"] as const).reduce(
 
 // The camera scene: Blue on space 14 with a few cars around it.
 const camBoard: Board = { blue: at(14), yellow: at(20), red: at(16), green: at(12, 1) };
-const camMove = resolveLegendMove(track, camBoard, "blue", cardOf(cardShown));
+const camMove = resolveLegendMove(track, camBoard, "blue", cardOf(fresh));
 const found = (targetSeen: boolean, board = camBoard, move = camMove): Found => ({ board, move, targetSeen });
 // Same scene with the target's inner spot taken: the outer spot is used.
 const blockedBoard: Board = { ...camBoard, red: camMove.to };
-const blockedMove = resolveLegendMove(track, blockedBoard, "blue", cardOf(cardShown));
+const blockedMove = resolveLegendMove(track, blockedBoard, "blue", cardOf(fresh));
 const dotsOf = (b: Board, only?: CarColor[]) =>
   (Object.keys(b) as CarColor[]).filter((c) => !only || only.includes(c)).map((c) => ({ color: c, ...spotCenter(track, b[c]!) }));
 
@@ -220,8 +219,7 @@ export const STATES: UiState[] = [
   { id: "rescan-done", group: "Board scan", title: "Rescan mid-race: done", render: () => fullscreen(<ScanPreview rescan phase="scanning" coverage={coverage(56, 4)} frames={31} />) },
 
   // --- Race
-  { id: "race-new", group: "Race", title: "Race started (round 1)", note: "Next round is locked until every Legend has moved.", render: withGame(fresh, () => <RaceScreen onLegend={noop} onEndRace={noop} onRescan={noop} />) },
-  { id: "race-card", group: "Race", title: "Round 1, card revealed", render: withGame(cardShown, () => <RaceScreen onLegend={noop} onEndRace={noop} onRescan={noop} />) },
+  { id: "race-new", group: "Race", title: "Race started (round 1)", note: "The card is drawn as the round starts. Next round stays dashed until every Legend has moved.", render: withGame(fresh, () => <RaceScreen onLegend={noop} onEndRace={noop} onRescan={noop} />) },
   { id: "race-mid", group: "Race", title: "Round 2, Blue moved", note: "Tap the folds to open the card and the history.", render: withGame(midRace, () => <RaceScreen onLegend={noop} onEndRace={noop} onRescan={noop} />) },
   { id: "race-all-moved", group: "Race", title: "Round 2, all Legends moved", render: withGame(allMoved, () => <RaceScreen onLegend={noop} onEndRace={noop} onRescan={noop} />) },
   {
@@ -285,7 +283,7 @@ export const STATES: UiState[] = [
   { id: "move-error", group: "Legend move (camera)", title: "Error", render: () => fullscreen(<MovePreview phase="error" blank error="OpenCV failed to load" />) },
 
   // --- By hand
-  { id: "tap-start", group: "By hand (tap mode)", title: "No known positions", render: withGame(cardShown, () => <TapMode info={info} legend="blue" onDone={noop} onCancel={noop} />) },
+  { id: "tap-start", group: "By hand (tap mode)", title: "No known positions", render: withGame(fresh, () => <TapMode info={info} legend="blue" onDone={noop} onCancel={noop} />) },
   { id: "tap-placing", group: "By hand (tap mode)", title: "Placing cars (zoomed)", render: withGame(midRace, () => <TapMode info={info} legend="yellow" initial={{ selected: "red" }} onDone={noop} onCancel={noop} />) },
   { id: "tap-hint", group: "By hand (tap mode)", title: "Tap off the track", render: withGame(midRace, () => <TapMode info={info} legend="yellow" initial={{ hint: "That's not on the track." }} onDone={noop} onCancel={noop} />) },
   {

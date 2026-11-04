@@ -35,10 +35,10 @@ export const inPlayOf = (roles: Roles): CarColor[] => CAR_COLORS.filter((c) => r
 export const canStart = (roles: Roles): boolean => legendsOf(roles).length > 0;
 
 // --- Transitions
-/** A new race starts in round 1 (D38): there is nothing to do before it. */
+/** A new race starts in round 1 with its card on the table (D38, D39). */
 export function newGame(trackId: string, roles: Roles, cards: readonly LegendCard[], rng?: Rng): GameState {
   if (!canStart(roles)) throw new Error("at least one Legend is required");
-  return { trackId, roles, deck: nextRound(newDeck(cards, rng)), positions: {}, log: [], history: [] };
+  return { trackId, roles, deck: revealCard(nextRound(newDeck(cards, rng)), rng), positions: {}, log: [], history: [] };
 }
 
 function push(g: GameState, next: Partial<Core>): GameState {
@@ -46,10 +46,12 @@ function push(g: GameState, next: Partial<Core>): GameState {
   return { ...core, ...next, history: [...history, core].slice(-HISTORY_LIMIT) };
 }
 
-export const startNextRound = (g: GameState): GameState => push(g, { deck: nextRound(g.deck) });
+/** Each round's card is drawn as the round starts (D39). Undoing a mistapped
+ *  Next round puts the card back, since undo restores the whole deck. */
+export const startNextRound = (g: GameState, rng?: Rng): GameState => push(g, { deck: revealCard(nextRound(g.deck), rng) });
 
-/** A Legend button tap: reveals this round's card if it isn't yet (D4, D6).
- *  A repeat tap changes nothing and so leaves no undo step. */
+/** A Legend button tap. Rounds now start with their card, so this only draws
+ *  for a race saved before D39. Otherwise it changes nothing and leaves no undo step. */
 export function tapLegend(g: GameState, colour: CarColor, rng?: Rng): GameState {
   if (g.roles[colour] !== "legend" || g.deck.card) return g;
   return push(g, { deck: revealCard(g.deck, rng) });
