@@ -35,9 +35,10 @@ export const inPlayOf = (roles: Roles): CarColor[] => CAR_COLORS.filter((c) => r
 export const canStart = (roles: Roles): boolean => legendsOf(roles).length > 0;
 
 // --- Transitions
+/** A new race starts in round 1 (D38): there is nothing to do before it. */
 export function newGame(trackId: string, roles: Roles, cards: readonly LegendCard[], rng?: Rng): GameState {
   if (!canStart(roles)) throw new Error("at least one Legend is required");
-  return { trackId, roles, deck: newDeck(cards, rng), positions: {}, log: [], history: [] };
+  return { trackId, roles, deck: nextRound(newDeck(cards, rng)), positions: {}, log: [], history: [] };
 }
 
 function push(g: GameState, next: Partial<Core>): GameState {
@@ -62,6 +63,16 @@ export function recordMove(g: GameState, colour: CarColor, move: LegendMove, boa
   const entry: LogEntry = { round: g.deck.round, colour, from: move.from, to: move.to, reason: move.reason };
   return push(g, { positions, log: [...g.log, entry] });
 }
+
+/** Legends with a recorded move this round. A tap that was cancelled doesn't count. */
+export const movedThisRound = (g: GameState): Set<CarColor> =>
+  new Set(g.log.filter((e) => e.round === g.deck.round).map((e) => e.colour));
+
+/** Next round is offered once every Legend has moved (D38); before that only as "anyway". */
+export const allLegendsMoved = (g: GameState): boolean => {
+  const moved = movedThisRound(g);
+  return legendsOf(g.roles).every((c) => moved.has(c));
+};
 
 export const canUndo = (g: GameState): boolean => g.history.length > 0;
 

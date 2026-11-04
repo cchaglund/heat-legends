@@ -39,7 +39,7 @@ const roles: Roles = { red: "legend", blue: "legend", green: "human", yellow: "l
 const at = (space: number, spot: 0 | 1 = 0): Position => ({ space, spot });
 
 const fresh = newGame(info.id, roles, LEGEND_CARDS, seeded(1));
-const cardShown = tapLegend(startNextRound(fresh), "blue", seeded(2));
+const cardShown = tapLegend(fresh, "blue", seeded(2));
 const cardOf = (g: GameState) => g.deck.card!;
 
 // Round 1 played (both Legends moved), round 2 started with Blue moved.
@@ -53,6 +53,12 @@ const midRace = (() => {
   const b3: Board = { ...g.positions, red: at(16), green: at(15) };
   return recordMove(g, "blue", resolveLegendMove(track, b3, "blue", cardOf(g)), b3);
 })();
+
+// Round 2 with every Legend moved: Next round unlocked.
+const allMoved = (["red", "yellow"] as const).reduce(
+  (g, c) => recordMove(g, c, resolveLegendMove(track, g.positions, c, cardOf(g)), g.positions),
+  midRace,
+);
 
 // The camera scene: Blue on space 14 with a few cars around it.
 const camBoard: Board = { blue: at(14), yellow: at(20), red: at(16), green: at(12, 1) };
@@ -214,9 +220,10 @@ export const STATES: UiState[] = [
   { id: "rescan-done", group: "Board scan", title: "Rescan mid-race: done", render: () => fullscreen(<ScanPreview rescan phase="scanning" coverage={coverage(56, 4)} frames={31} />) },
 
   // --- Race
-  { id: "race-new", group: "Race", title: "Race started, round 0", render: withGame(fresh, () => <RaceScreen onLegend={noop} onEndRace={noop} onRescan={noop} />) },
+  { id: "race-new", group: "Race", title: "Race started (round 1)", note: "Next round is locked until every Legend has moved.", render: withGame(fresh, () => <RaceScreen onLegend={noop} onEndRace={noop} onRescan={noop} />) },
   { id: "race-card", group: "Race", title: "Round 1, card revealed", render: withGame(cardShown, () => <RaceScreen onLegend={noop} onEndRace={noop} onRescan={noop} />) },
   { id: "race-mid", group: "Race", title: "Round 2, Blue moved", note: "Tap the folds to open the card and the history.", render: withGame(midRace, () => <RaceScreen onLegend={noop} onEndRace={noop} onRescan={noop} />) },
+  { id: "race-all-moved", group: "Race", title: "Round 2, all Legends moved", render: withGame(allMoved, () => <RaceScreen onLegend={noop} onEndRace={noop} onRescan={noop} />) },
   {
     id: "race-about",
     group: "Race",

@@ -63,6 +63,7 @@ For each car, in race order (you know the order; the app doesn't need to):
 - One button per Legend. Tapping it again re-shows the move without flipping a new card.
 - The card is flipped only on the first Legend tap after [Next round]. That way a stray tap can't burn a card, and a round where no Legend moves doesn't flip one either.
 - Undo for the last action: a mistapped [Next round] must not cost a card.
+- A race starts in round 1. [Next round] unlocks once every Legend has a recorded move this round; before that a small "Next round anyway" link still allows it (e.g. a Legend that is out of the race). A short line above the Legend buttons says what to do (D38).
 
 App-driven turn order (detect all cars and walk you through) is listed in [07-future-enhancements.md](07-future-enhancements.md).
 

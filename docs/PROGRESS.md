@@ -207,6 +207,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - `fixtures-raw/` holds the original photos **with GPS EXIF**. It's git-ignored; never commit it. `reports/` is git-ignored too: regenerate it.
 
 ## Session log
+- **2026-11-04 (e)**: D38 round flow: start in round 1, Next round locked until all Legends moved (+ "anyway" link), help line above the Legend buttons; disabled primary buttons now look disabled.
 - **2026-11-04 (d)**: Screens fit above the phone's browser bars (user's screenshot): no paragraph margins, empty areas collapse, tap height 48, big buttons 60, title 40.
 - **2026-11-04 (c)**: User asked for 5 bold UI directions (design-principles skill): built as switchable themes + gallery compare page. User picked Chequered Flag (D37); made it the default, other themes removed.
 - **2026-11-04 (b)**: User annotated GB, Italy, USA (annotator fixes: speeds ≤15, speed ⇒ corner, flip stops at finish, reverse button, refused save kept as draft); all three shipped.

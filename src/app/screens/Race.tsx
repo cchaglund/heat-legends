@@ -1,10 +1,11 @@
-// The round flow (D6): the user walks the race order, tapping [Next round]
-// and each Legend's button when its turn comes. The first Legend tap of a
-// round reveals the card (D4); every change can be undone.
+// The round flow (D6, D38): the user walks the race order, tapping each
+// Legend's button when its turn comes; [Next round] unlocks once every Legend
+// has moved, with an "anyway" way out. The first Legend tap of a round reveals
+// the card (D4); every change can be undone.
 import { useState } from "preact/hooks";
 import { spaceLabel } from "../../engine";
 import type { CarColor } from "../../engine";
-import { canUndo, legendsOf, startNextRound, tapLegend, undo } from "../game";
+import { allLegendsMoved, canUndo, legendsOf, movedThisRound, startNextRound, tapLegend, undo } from "../game";
 import type { LogEntry } from "../game";
 import { CAR_HEX, carName } from "../colours";
 import { game, update } from "../store";
@@ -21,7 +22,8 @@ export function RaceScreen({ onLegend, onEndRace, onRescan }: Props) {
   const { round, card } = g.deck;
   const legends = legendsOf(g.roles);
   const label = (s: number) => spaceLabel(track, s);
-  const movedThisRound = new Set(g.log.filter((e) => e.round === round).map((e) => e.colour));
+  const moved = movedThisRound(g);
+  const allMoved = allLegendsMoved(g);
 
   const tap = (c: CarColor) => {
     update((g) => tapLegend(g, c));
@@ -39,18 +41,22 @@ export function RaceScreen({ onLegend, onEndRace, onRescan }: Props) {
         <button class="btn icon" aria-label="Settings" onClick={() => setAbout(true)}>⋯</button>
       </header>
 
+      <p class="race-help">
+        {allMoved ? "All Legends have moved. Next round when everyone's done." : "When a Legend's turn comes, tap it to see where it moves."}
+      </p>
+
       <section class="legends">
         {legends.map((c) => {
-          const moved = movedThisRound.has(c);
+          const done = moved.has(c);
           return (
             <button
               key={c}
-              class={`legend-btn ${moved ? "moved" : "todo"}`}
+              class={`legend-btn ${done ? "moved" : "todo"}`}
               style={{ "--car": c === "black" ? "#8a8f96" : CAR_HEX[c] }}
-              aria-label={`${carName(c)}${moved ? ", moved this round" : ""}`}
+              aria-label={`${carName(c)}${done ? ", moved this round" : ""}`}
               onClick={() => tap(c)}
             >
-              {moved && <Swatch colour={c} size={28} />}
+              {done && <Swatch colour={c} size={28} />}
               <span>
                 <b>{carName(c)}</b>
                 <small>{g.positions[c] ? label(g.positions[c]!.space) : "position unknown"}</small>
@@ -62,11 +68,18 @@ export function RaceScreen({ onLegend, onEndRace, onRescan }: Props) {
 
       <hr class="race-divider" />
 
-      <button class="btn primary wide big" onClick={() => update(startNextRound)}>
-        {round === 0 ? "Start round 1" : `Next round (${round + 1})`}
-      </button>
+      <div class="next-round">
+        <button class="btn primary wide big" disabled={!allMoved} onClick={() => update(startNextRound)}>
+          Next round ({round + 1})
+        </button>
+        {!allMoved && (
+          <button class="link" onClick={() => update(startNextRound)}>
+            Not all Legends have moved. Next round anyway ›
+          </button>
+        )}
+      </div>
 
-      {card ? (
+      {card && (
         <details class="fold">
           <summary>Legend card {card.id}</summary>
           <table class="card-table">
@@ -84,8 +97,6 @@ export function RaceScreen({ onLegend, onEndRace, onRescan }: Props) {
             </tbody>
           </table>
         </details>
-      ) : (
-        round > 0 && <p class="muted hint">This round's card is drawn on the first Legend tap.</p>
       )}
 
       {g.log.length > 0 && (

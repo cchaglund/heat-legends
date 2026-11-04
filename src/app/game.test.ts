@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { parseLegendCards } from "../engine";
 import type { LegendMove } from "../engine";
 import {
+  allLegendsMoved,
   canStart,
   canUndo,
   cycleRole,
@@ -46,7 +47,7 @@ describe("roles", () => {
 
 describe("round flow", () => {
   it("reveals the card on the first Legend tap only", () => {
-    let g = startNextRound(newGame("france", roles, cards, rng));
+    let g = newGame("france", roles, cards, rng);
     expect(g.deck.round).toBe(1);
     expect(g.deck.card).toBeNull();
     g = tapLegend(g, "green", rng);
@@ -61,7 +62,7 @@ describe("round flow", () => {
   });
 
   it("records a move and remembers positions", () => {
-    let g = tapLegend(startNextRound(newGame("france", roles, cards, rng)), "green", rng);
+    let g = tapLegend(newGame("france", roles, cards, rng), "green", rng);
     g = recordMove(g, "green", move, { green: move.from, blue: { space: 15, spot: 0 } });
     expect(g.positions).toEqual({ green: move.to, blue: { space: 15, spot: 0 } });
     expect(g.log).toEqual([{ round: 1, colour: "green", ...move }]);
@@ -76,6 +77,7 @@ describe("round flow", () => {
     const g0 = newGame("france", roles, cards, rng);
     const g1 = startNextRound(g0);
     const g2 = tapLegend(g1, "green", rng);
+    expect(g0.deck.round).toBe(1); // a race starts in round 1, with no undo step before it
     const g3 = recordMove(g2, "green", move, {});
     expect(undo(g3)).toEqual(g2);
     expect(undo(undo(g3))).toEqual(g1);
@@ -84,8 +86,19 @@ describe("round flow", () => {
     expect(undo(g0)).toBe(g0);
   });
 
+  it("unlocks Next round once every Legend has a recorded move this round", () => {
+    let g = newGame("france", roles, cards, rng);
+    expect(allLegendsMoved(g)).toBe(false);
+    g = recordMove(tapLegend(g, "green", rng), "green", move, {});
+    expect(allLegendsMoved(g)).toBe(false);
+    expect(tapLegend(g, "red", rng)).toBe(g); // a tap alone isn't a move
+    g = recordMove(g, "red", move, {});
+    expect(allLegendsMoved(g)).toBe(true);
+    expect(allLegendsMoved(startNextRound(g))).toBe(false);
+  });
+
   it("a mistapped Next round costs no card once undone", () => {
-    const g = tapLegend(startNextRound(newGame("france", roles, cards, rng)), "green", rng);
+    const g = tapLegend(newGame("france", roles, cards, rng), "green", rng);
     const pile = g.deck.drawPile.length;
     const back = undo(startNextRound(g));
     expect(back.deck.card).toEqual(g.deck.card);
@@ -95,7 +108,7 @@ describe("round flow", () => {
 
 describe("persistence", () => {
   it("round-trips through JSON", () => {
-    const g = recordMove(tapLegend(startNextRound(newGame("france", roles, cards, rng)), "green", rng), "green", move, {});
+    const g = recordMove(tapLegend(newGame("france", roles, cards, rng), "green", rng), "green", move, {});
     expect(deserialize(serialize(g))).toEqual(g);
     expect(undo(deserialize(serialize(g))!)).toEqual(undo(g));
   });
