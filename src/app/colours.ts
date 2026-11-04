@@ -1,5 +1,5 @@
 // Display colours for the six cars. Black and silver get an outline so they
-// stay visible on the dark theme and on the grey track.
+// stay visible on the white chrome and on the grey track.
 import type { CarColor } from "../engine";
 
 export const CAR_HEX: Record<CarColor, string> = {

@@ -1,29 +1,32 @@
-/* Camera screens: the video fills the screen, text and buttons float over it. */
+/* Camera screens: the video fills the screen, white bars with black type float
+   over it, so the text stays readable on any picture. */
 .cam { position: fixed; inset: 0; background: #000; overflow: hidden; }
 .cam-video, .cam-overlay { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .cam-overlay { pointer-events: none; }
 .cam-top, .cam-bottom {
   position: absolute; left: 0; right: 0; padding: 12px 16px;
   display: flex; flex-direction: column; gap: 8px;
-  background: rgba(0, 0, 0, 0.6); color: var(--text);
+  background: #fff; color: #000;
 }
-.cam-top { top: 0; padding-top: max(12px, env(safe-area-inset-top)); font-size: 16px; }
-.cam-top b { font-size: 19px; }
-.cam-bottom { bottom: 0; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+.cam-top { top: 0; padding-top: max(12px, env(safe-area-inset-top)); font-size: 16px; border-bottom: var(--rule); }
+.cam-top b { font: var(--display); font-size: 30px; line-height: 1; text-transform: uppercase; }
+.cam-bottom { bottom: 0; padding-bottom: max(12px, env(safe-area-inset-bottom)); border-top: var(--rule); }
 .cam-bottom .row { flex-wrap: wrap; }
 .cam-msg { margin: 0; font-size: 15px; }
-.cam-msg.warn { color: var(--accent-2); }
-.cam-progress { height: 10px; border-radius: 5px; background: rgba(255, 255, 255, 0.2); overflow: hidden; }
-.cam-progress > div { height: 100%; background: var(--accent-2); transition: width 0.2s; }
+.cam-msg.warn { font-weight: 600; padding-left: 12px; border-left: 4px solid #000; }
+/* The progress bar fills with chequers. */
+.cam-progress { height: 14px; border: var(--rule); background: #fff; overflow: hidden; }
+.cam-progress > div { height: 100%; background: var(--check); transition: width 0.2s; }
 .cam-map {
   position: absolute; right: 12px; top: calc(max(12px, env(safe-area-inset-top)) + 84px);
-  width: 40%; max-width: 220px; background: rgba(0, 0, 0, 0.55); border-radius: 8px; padding: 6px;
+  width: 40%; max-width: 220px; background: #fff; border: var(--rule); padding: 6px;
 }
 .cam-dialog {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(320px, calc(100% - 32px));
-  padding: 20px; border-radius: 16px; background: var(--panel); box-shadow: 0 8px 40px #000c;
+  padding: 36px 20px 20px; background: #fff; color: #000; border: var(--rule); box-shadow: 8px 8px 0 #000;
   display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center;
 }
-.cam-dialog h2 { margin: 0; color: var(--text); font-size: 22px; text-transform: none; letter-spacing: 0; }
+.cam-dialog::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 12px; background: var(--check); background-repeat: repeat-x; }
+.cam-dialog h2 { margin: 0; font-size: 36px; line-height: 1; letter-spacing: 0; }
 .cam-dialog p { margin: 0; }
 .cam-dialog .link { align-self: center; }

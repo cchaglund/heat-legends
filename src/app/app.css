@@ -1,16 +1,25 @@
-/* One stylesheet for the whole app: phone-first, portrait, dim-room friendly. */
+/* One stylesheet for the whole app: phone-first, portrait. "Chequered Flag"
+   (D37): black and white only, square corners, racing italics, so the cars
+   are the only colour on screen and can't be confused with the chrome. The
+   2px black rule is the theme's voice; it's used everywhere alike. */
+@import "@fontsource/barlow/latin-400.css";
+@import "@fontsource/barlow/latin-500.css";
+@import "@fontsource/barlow/latin-600.css";
+@import "@fontsource/barlow-condensed/latin-800-italic.css";
+
 :root {
-  --bg: #15171a;
-  --panel: #1f2226;
-  --panel-2: #2a2e33;
-  --line: #3a3f45;
-  --text: #eceef0;
-  --muted: #9aa1a9;
-  --accent: #a3182f; /* crimson: distinct from the red car (#e0352b) */
-  --accent-2: #f4c430;
-  --radius: 12px;
+  --bg: #fff;
+  --panel: #fff;
+  --panel-2: #f2f2f2;
+  --line: #000;
+  --text: #000;
+  --muted: #555;
+  --faint: #aaa;
+  --rule: 2px solid #000;
+  --display: italic 800 19px/1.1 "Barlow Condensed", "Arial Narrow", sans-serif;
+  --check: repeating-conic-gradient(#000 0 25%, #fff 0 50%) 0 0 / 12px 12px;
   --tap: 52px;
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 * { box-sizing: border-box; }
@@ -18,13 +27,18 @@ html, body { margin: 0; height: 100%; }
 body {
   background: var(--bg);
   color: var(--text);
-  font: 17px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 500 17px/1.4 Barlow, "Helvetica Neue", Arial, sans-serif;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
 }
 #app { min-height: 100%; }
-h1 { font-size: 26px; margin: 8px 0 12px; }
-h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 8px; }
+/* Titles sit under a two-row chequered strip. */
+h1 {
+  font: var(--display); font-size: 48px; line-height: 0.92; text-transform: uppercase; letter-spacing: -0.01em;
+  margin: 4px 0 8px; padding-top: 24px;
+  background: var(--check); background-repeat: repeat-x;
+}
+h2 { font: var(--display); font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 8px; }
 .muted { color: var(--muted); }
 small { font-size: 13px; }
 
@@ -48,83 +62,91 @@ small { font-size: 13px; }
 .btn {
   min-height: var(--tap);
   padding: 0 18px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--panel-2);
-  color: var(--text);
-  font: inherit;
-  font-weight: 600;
+  border: var(--rule);
+  border-radius: 0;
+  background: #fff;
+  color: #000;
+  font: var(--display);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
   cursor: pointer;
   display: inline-flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
 }
-.btn:active { filter: brightness(1.2); }
-.btn:disabled { opacity: 0.4; cursor: default; }
-.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-.btn.danger { background: transparent; border-color: #a33; color: #ff8a80; }
+.btn:active { background: #000; color: #fff; }
+.btn:disabled { color: var(--faint); border-color: #ccc; background: #fff; cursor: default; }
+.btn.primary { background: #000; color: #fff; }
+.btn.primary:active { background: #333; }
+.btn.danger { border-style: dashed; }
 .btn.wide { width: 100%; }
-.btn.big { min-height: 64px; font-size: 19px; }
-.btn.small { min-height: 40px; padding: 0 12px; font-size: 15px; }
+.btn.big { min-height: 68px; font-size: 26px; }
+.btn.small { min-height: 40px; padding: 0 12px; font-size: 16px; }
 .btn.icon { width: var(--tap); padding: 0; font-size: 24px; }
-.btn small { font-weight: 400; opacity: 0.85; }
-.link { background: none; border: 0; color: var(--muted); font: inherit; padding: 8px 0; align-self: flex-start; cursor: pointer; }
+.btn small { font: 500 14px Barlow, sans-serif; text-transform: none; letter-spacing: 0; }
+.link {
+  background: none; border: 0; color: #000; padding: 8px 0; align-self: flex-start; cursor: pointer;
+  font: var(--display); font-size: 17px; text-transform: uppercase;
+}
 
 .swatch { display: inline-block; border-radius: 50%; flex: none; vertical-align: middle; }
 
 /* --- Setup */
 .track-card {
-  display: flex; flex-direction: column; gap: 8px; padding: 10px;
-  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
-  color: var(--text); font: inherit; font-size: 20px; font-weight: 600; cursor: pointer;
+  display: flex; flex-direction: column; padding: 0; text-align: left;
+  background: #fff; border: var(--rule); color: #000; cursor: pointer;
+  font: var(--display); font-size: 32px; line-height: 1; text-transform: uppercase;
 }
-.track-card img { width: 100%; height: auto; border-radius: 8px; }
+.track-card img { width: 100%; height: auto; border-bottom: var(--rule); }
+.track-card span { padding: 12px 16px; }
 
-.area { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; min-height: 96px; }
-.area-legend { border-color: var(--accent); }
-.area-out { opacity: 0.8; }
+.area { border: var(--rule); padding: 12px; min-height: 96px; }
+.area-legend { background: #000; color: #fff; }
+.area-out { border-style: dashed; }
 .chips, .palette { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip {
   min-height: var(--tap); padding: 0 14px; display: inline-flex; align-items: center; gap: 8px;
-  background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px;
-  color: var(--text); font: inherit; font-weight: 600; cursor: pointer;
+  background: #fff; border: var(--rule); color: #000; cursor: pointer;
+  font: var(--display); font-size: 18px; text-transform: uppercase;
 }
-.chip.selected { border-color: var(--text); box-shadow: 0 0 0 2px var(--text); }
+.area-legend .chip { border-color: #fff; }
+.chip.selected { background: #000; color: #fff; box-shadow: 0 0 0 2px #fff, 0 0 0 4px #000; }
 
-/* --- Race */
-.race-bar { display: flex; align-items: center; gap: 8px; }
-.race-bar .round { flex: 1; display: flex; align-items: baseline; gap: 8px; }
-.race-bar .round b { font-size: 34px; }
-.fold { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
-.fold summary { padding: 14px 12px; font-weight: 600; color: var(--muted); cursor: pointer; }
-.fold[open] summary { color: var(--text); }
+/* --- Race: a giant round number. */
+.race-bar { display: flex; align-items: center; gap: 8px; padding-bottom: 8px; border-bottom: var(--rule); }
+.race-bar .round { flex: 1; display: flex; align-items: flex-end; gap: 8px; }
+.race-bar .round small { font: var(--display); font-size: 20px; text-transform: uppercase; }
+.race-bar .round b { font: var(--display); font-size: 80px; line-height: 0.8; }
+.fold { border: var(--rule); }
+.fold summary { padding: 14px 12px; font: var(--display); text-transform: uppercase; cursor: pointer; }
 .fold > :not(summary) { margin: 0 12px 12px; }
 .hint { margin: 0; text-align: center; font-size: 15px; }
 .card-table { width: calc(100% - 24px); border-collapse: collapse; font-size: 18px; }
-.card-table th { font-size: 13px; color: var(--muted); font-weight: 500; text-align: right; }
-.card-table td { padding: 4px 0; }
-.card-table td + td { text-align: right; font-weight: 700; font-size: 22px; }
+.card-table th { font: var(--display); font-size: 13px; text-transform: uppercase; text-align: right; }
+.card-table td { padding: 8px 0; border-top: var(--rule); }
+.card-table td + td { text-align: right; font: var(--display); font-size: 32px; line-height: 1; }
 .legends { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-/* Not yet moved this round: filled with the car's colour. Moved: dark, coloured outline. */
+/* Not yet moved this round: filled with the car's colour. Moved: white, greyed name. */
 .legend-btn {
-  min-height: 76px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; text-align: left;
-  font: inherit; cursor: pointer; border: 2px solid var(--car); border-radius: var(--radius);
+  min-height: 84px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; text-align: left;
+  font: inherit; cursor: pointer; border: var(--rule);
 }
 .legend-btn span { display: flex; flex-direction: column; min-width: 0; }
-.legend-btn b { font-size: 19px; }
-.legend-btn.todo { background: var(--car); color: #111; }
+.legend-btn b { font: var(--display); font-size: 28px; line-height: 0.95; text-transform: uppercase; }
+.legend-btn.todo { background: var(--car); color: #111; box-shadow: inset 0 0 0 3px #fff; }
 .legend-btn.todo small { color: #111; opacity: 0.75; }
-.legend-btn.moved { background: var(--panel); color: var(--car); }
+.legend-btn.moved { background: #fff; color: #000; }
+.legend-btn.moved b { color: var(--faint); }
 .legend-btn.moved small { color: var(--muted); }
 .log { padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
-.log li { background: var(--panel-2); border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; }
+.log li { border: var(--rule); padding: 8px 10px; display: flex; flex-direction: column; }
 .log-head .swatch { margin: 0 2px; }
 
 /* --- Tap mode: image fills the space between the bar and the panel. */
 .tap { height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
-.tap-bar { display: flex; align-items: center; gap: 8px; padding: max(8px, env(safe-area-inset-top)) 12px 8px; }
-.tap-bar h1 { flex: 1; font-size: 20px; margin: 0; display: flex; align-items: center; gap: 8px; }
+.tap-bar { display: flex; align-items: center; gap: 8px; padding: max(8px, env(safe-area-inset-top)) 12px 8px; border-bottom: var(--rule); }
+.tap-bar h1 { flex: 1; font-size: 32px; margin: 0; padding: 0; background: none; display: flex; align-items: center; gap: 8px; }
 .zoom { display: flex; gap: 6px; }
 .tap-scroll { flex: 1; overflow: auto; background: #000; touch-action: pan-x pan-y; }
 .tap-canvas { position: relative; }
@@ -132,26 +154,28 @@ small { font-size: 13px; }
 .tap-canvas svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .tap-panel {
   padding: 12px 12px max(12px, env(safe-area-inset-bottom));
-  background: var(--panel); border-top: 1px solid var(--line);
+  background: #fff; border-top: var(--rule);
   display: flex; flex-direction: column; gap: 10px;
 }
 .tap-panel p { margin: 0; }
-.move-head { font-size: 19px; }
+.move-head { font: var(--display); font-size: 26px; text-transform: uppercase; }
 
-/* --- Overlays */
-.sheet-backdrop { position: fixed; inset: 0; background: #000a; display: flex; align-items: flex-end; z-index: 10; }
+/* --- Overlays: sheets carry a chequered strip on top. */
+.sheet-backdrop { position: fixed; inset: 0; background: rgba(255, 255, 255, 0.7); display: flex; align-items: flex-end; z-index: 10; }
 .sheet {
-  width: 100%; max-width: 560px; margin: 0 auto; background: var(--panel);
-  border-radius: 16px 16px 0 0; padding: 20px 16px max(20px, env(safe-area-inset-bottom));
+  position: relative; width: 100%; max-width: 560px; margin: 0 auto; background: #fff;
+  padding: 20px 16px max(20px, env(safe-area-inset-bottom));
   display: flex; flex-direction: column; gap: 12px;
 }
-.sheet h2 { color: var(--text); font-size: 20px; text-transform: none; letter-spacing: 0; }
+.sheet::before { content: ""; position: absolute; left: 0; right: 0; top: -12px; height: 12px; background: var(--check); background-repeat: repeat-x; }
+.sheet h2 { font-size: 34px; letter-spacing: 0; }
 .update-banner {
   position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 8px;
-  padding: 8px 12px; background: var(--accent-2); color: #111; font-weight: 600;
+  padding: 8px 12px; background: #000; color: #fff; font: var(--display); font-size: 18px; text-transform: uppercase;
 }
 .update-banner span { flex: 1; }
-.update-banner .btn { background: #111; color: #fff; border-color: #111; }
+.update-banner .btn { background: #000; color: #fff; border-color: #fff; }
+.update-banner .btn.primary { background: #fff; color: #000; }
 .camera-stub { padding: 24px 16px; display: flex; flex-direction: column; gap: 12px; }
-.camera-stub button { min-height: var(--tap); font: inherit; border-radius: var(--radius); }
-.race-divider { border: 0; border-top: 1px solid var(--line); margin: 6px 0; }
+.camera-stub button { min-height: var(--tap); font: inherit; }
+.race-divider { display: none; }
