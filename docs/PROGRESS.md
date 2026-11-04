@@ -7,7 +7,7 @@
 
 ## Current focus
 
-**2026-11-04 (latest): the other three tracks (Great Britain, Italy, USA). User chose this over more enhancements.** Automatic drafts are done (`npx tsx tools/find-boundaries.ts <track>` → `reports/boundaries/<track>.{png,json}`, all loops close); now **waiting on the user to check each in the annotator** (`npm run annotate -- <track>`, http://localhost:4610), as for France. Known draft gaps: GB 60 of 63 lines (one missing between 41/42; corner lines at circles 4, 5, 9 tagged as Legends Lines, same tan colour on this print); Italy 52 of 54 (a bogus diagonal near 39/40, ~3 missing top right by the grid); USA 68 of 69 (the Legends Line on the bottom straight between 26/27 is missing). The number in the board's info box (France 60, GB 63, Italy 54, USA 69) is the space count. Corner speed limits are all 0 in drafts: the annotator sets them. After a track is saved: `npx tsx tools/prep-assets.ts <track>` (ships `public/tracks/<track>.jpg`), and the app lists it automatically (`src/app/tracks.ts` globs `tracks/*.json`). Then the user play-tests it (board scan + a few rounds); there are no fixture photos of these boards.
+**2026-11-04 (latest): all four tracks are annotated and in the app** (France, Great Britain 63 spaces/5 corners, Italy 54/3, USA 69/4; user-checked in the annotator, each validated: space count = the number in the board's info box, every spot centre on the road). **Next: the user play-tests GB, Italy and USA on the real boards** (board scan + a few rounds); there are no fixture photos of them. Watch for: green car on GB's green-grey road, red car on USA's red-brown road. Annotator additions this session: `PORT` env, corner speeds up to 15 (GB has a 10), typing a speed makes a line a corner, the raceline flip stops at the finish (it used to wrap round the loop), a "reverse direction" button, and a refused save is kept as the draft (`reports/boundaries/<track>.json`) so a reload doesn't lose work.
 
 **2026-11-03 (latest): D36 built: rescan suggestion after 2 failed sweeps + mid-race rescan with the cars on the board (`ScanBoard rescan`, worker `reset {rescan}`, `ScanAccumulator.excludeBox/markCandidate`). Gallery feedback round 1 applied (race screen: Legends first, filled = not moved, card + history folded; scan-complete dialog; crimson primary buttons). Waiting on the user's play-test.**
 
@@ -94,7 +94,7 @@ Findings:
 **Earlier idea, now partly done:** stop tuning pixels and use the track.** A car can only stand on a space. Once M3 annotates the spaces, a blob counts only when it sits on a space, and only one car fits per spot. Most black/silver false blobs (verges, markings, glare streaks) are not on a space centre. Measure this on the fixtures as soon as `tracks/france.json` exists.
 
 ### Next actions (in order)
-0. **Other tracks (current):** user checks the GB / Italy / USA drafts in the annotator → `prep-assets` → commit → user play-test on that board. Watch for colour risks: green car on GB's green-grey road, red car on USA's red-brown road (the per-frame colour fit is against the scan, so it may be fine; verify in play).
+0. **Other tracks:** user play-test of GB / Italy / USA. If detection is poor on one, get a short scan video of that board (as for France) and run the vision tools on it.
 1. **Waiting on the user:** play-test the mid-race rescan (D36) when the light changes: ⋯ → "Rescan the board", or accept the suggestion after two failed sweeps. If detection fails again, ask for a short phone video of the board in that light (cars on), so the failure can be reproduced: the fixtures' lamp on/off change does *not* reproduce it (coloured cars are found across lighting already).
 2. Light-change follow-ups if the play-test shows the need: the suggestion counts failed sweeps only; an automatic light-change statistic was tried and doesn't track recall (`tools/light-check.ts`, D36).
 3. Things known to be missing (pick by what the play-test shows): D20 [Wrong car] cycling; D19 quality-gate hints during the sweep ("hold steadier"); M6 polish (smoothed H, holding the last H through dropouts, an off-screen target arrow, D16); (D34 rescan: done as D36); caching the built detection model so startup skips ~2 s; black detection (best effort, 1/5); the roles screen's drag (D31, optional).
@@ -150,7 +150,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - [x] User confirmed the France annotation (`tracks/france.json`, 2026-11-02; corner #47 = speed 4; raceline right 0–26, left 27–38, right 39–59)
 - [ ] `tracks/france.json`
 - [x] Drafts for Great Britain, Italy, USA (per-track asphalt colour in `find-boundaries.ts`, 2026-11-04)
-- [ ] User checks/saves `tracks/great-britain.json`, `tracks/italy.json`, `tracks/usa.json`; `prep-assets`; play-test each
+- [x] User checked/saved `tracks/great-britain.json`, `tracks/italy.json`, `tracks/usa.json`; images shipped (2026-11-04)
+- [ ] Play-test each on the real board
 - [ ] Convert `truth.json` pixel positions → spaces
 
 ### M4 — App shell + tap mode ✅ (2026-11-03)
@@ -182,6 +183,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - [x] Decided D34: store scans, suggest a rescan on unusual noise.
 
 ## Findings & gotchas (read before touching vision code)
+- **Draft direction can be wrong:** `find-boundaries.ts` takes "forward" from the start-grid bracket strokes, or (none found, GB/USA) from which space next to the finish has more white paint. Weak on USA: the user reversed it in the annotator. Always have the user confirm the direction.
 - **Each print has its own asphalt colour** (France neutral grey, GB dark green-grey, Italy warm light grey, USA dark brown to near-black red). The old grey test (`max < 97 && chroma < 33`) only suits France. `find-boundaries.ts` has a per-track `ASPHALT` table; the app's detection mask now comes from the annotated space quads (`buildReferenceModel(cv, ref, road)`; same or slightly better on France: `ROAD=quads npm run test:vision`). Tools without `road` still use the grey test.
 - **Vitest can't `import` OpenCV.js** (its module object is thenable: "Promise.prototype.then called on incompatible receiver"). Tests that need cv `require` it instead (see `src/vision/scan.test.ts`). `scan.ts` etc. only import the `CV` *type*, so they stay testable.
 - **Candidate blobs recur where the light changed**, not only on cars: as a "car here" signal for the rescan they froze 26–31% of the board. Use assigned on-space detections (D36).
@@ -202,6 +204,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - `fixtures-raw/` holds the original photos **with GPS EXIF**. It's git-ignored; never commit it. `reports/` is git-ignored too: regenerate it.
 
 ## Session log
+- **2026-11-04 (b)**: User annotated GB, Italy, USA (annotator fixes: speeds ≤15, speed ⇒ corner, flip stops at finish, reverse button, refused save kept as draft); all three shipped.
 - **2026-11-04 (a)**: User: move on to the other maps. Boundary drafts for GB/Italy/USA (per-track asphalt test, "boundary must cross the road" check, relaxed finish check); detection track mask from annotation quads; app lists tracks from `tracks/*.json`.
 - **2026-11-03 (e)**: Crimson primary buttons + divider (user). D36: rescan suggestion after 2 failed sweeps, mid-race rescan with cars on the board (old scan kept near known/detected cars); light-change statistic tried and dropped; rescan simulated (`RESCAN_FROM`) and browser-tested.
 - **2026-11-03 (d)**: User feedback on the gallery: scan-complete dialog (#11); race screen: Legend buttons first, filled colour = not moved this round, dark = moved (#17); card and move history folded by default; no boxed placeholder at round 0 (#15).

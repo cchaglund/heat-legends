@@ -37,7 +37,10 @@ createServer(async (req, res) => {
         console.log(`saved ${OUT}`);
         return send(res, 200, "text/plain", `saved ${OUT}: ${t.spaces.length} spaces, ${t.corners.length} corners`);
       } catch (e) {
-        return send(res, 422, "text/plain", `not saved: ${(e as Error).message}`);
+        // Keep the work: a refused save becomes the draft the page reloads from.
+        await mkdir(join("reports", "boundaries"), { recursive: true });
+        await writeFile(join("reports", "boundaries", `${track}.json`), JSON.stringify(ann, null, 1));
+        return send(res, 422, "text/plain", `not saved to ${OUT} (kept as the draft, reload keeps it): ${(e as Error).message}`);
       }
     }
     if (url.pathname === "/ref.jpg") return send(res, 200, "image/jpeg", refJpg);
@@ -70,6 +73,7 @@ svg{position:absolute;inset:0;width:100%;height:100%}
  <button id="flip" title="R">flip raceline from here (R)</button>
  <button id="del" title="Delete">delete line</button>
  <button id="add">add line</button>
+ <button id="reverse">reverse direction</button>
  <button id="save">save (S)</button>
  <span id="msg"></span>
 </header>
@@ -196,6 +200,14 @@ function flip() {
   draw();
 }
 $('flip').onclick = flip;
+// The draft guesses the direction from the start grid. Reversing keeps the
+// finish first and each space's raceline on the same side of the road.
+$('reverse').onclick = () => {
+  const n = B.length, side = B.map((b) => b.raceline);
+  const nb = [B[0], ...B.slice(1).reverse()];
+  nb.forEach((b, k) => { [b.a, b.b] = [b.b, b.a]; b.raceline = side[n - 1 - k] === 'a' ? 'b' : 'a'; });
+  B.splice(0, n, ...nb); sel = -1; draw();
+};
 $('del').onclick = () => { B.splice(sel, 1); sel = -1; draw(); };
 $('add').onclick = () => { adding = []; sel = -1; draw(); };
 async function save() {
