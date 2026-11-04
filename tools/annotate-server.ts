@@ -64,7 +64,7 @@ svg{position:absolute;inset:0;width:100%;height:100%}
 </style>
 <header>
  <b id="sel">click a line</b>
- <label><input type="checkbox" id="corner"> corner, speed <input type="number" id="speed" min="1" max="9"></label>
+ <label><input type="checkbox" id="corner"> corner, speed <input type="number" id="speed" min="1" max="15"></label>
  <label><input type="checkbox" id="legends"> Legends Line</label>
  <label><input type="checkbox" id="finish"> finish</label>
  <button id="flip" title="R">flip raceline from here (R)</button>
@@ -105,7 +105,7 @@ function problems() {
   B.forEach((b, i) => {
     const c = tag(b, 'corner');
     if (!c) return;
-    if (!(c.speedLimit >= 1 && c.speedLimit <= 9)) p.push('line ' + i + ': corner speed limit missing');
+    if (!(c.speedLimit >= 1 && c.speedLimit <= 15)) p.push('line ' + i + ': corner speed limit missing');
     let j = i - 1;
     for (; j > i - n; j--) { const bj = B[(j + n) % n]; if (has(bj, 'legends')) break; if (has(bj, 'corner')) { j = null; break; } }
     if (j === null || j === i - n) p.push('line ' + i + ': no Legends Line before this corner');
@@ -179,7 +179,13 @@ function insert(nb) {
   sel = best + 1; adding = null;
 }
 $('corner').onchange = (e) => { setTag(B[sel], 'corner', e.target.checked, { speedLimit: +$('speed').value || 0 }); draw(); };
-$('speed').oninput = (e) => { const c = tag(B[sel], 'corner'); if (c) { c.speedLimit = +e.target.value || 0; draw(); } };
+// Typing a speed makes the line a corner (a tan Legends-only line would ignore it otherwise).
+$('speed').oninput = (e) => {
+  const v = +e.target.value || 0, c = tag(B[sel], 'corner');
+  if (c) c.speedLimit = v;
+  else { setTag(B[sel], 'corner', true, { speedLimit: v }); $('corner').checked = true; }
+  draw();
+};
 $('legends').onchange = (e) => { setTag(B[sel], 'legends', e.target.checked); draw(); };
 $('finish').onchange = (e) => { setTag(B[sel], 'finish', e.target.checked); draw(); };
 function flip() {

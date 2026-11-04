@@ -165,7 +165,8 @@ const sides = kept.map((f) => {
   const L = span(f), nx = -(f.b[1] - f.a[1]) / L, ny = (f.b[0] - f.a[0]) / L;
   const vote = (sgn: number) => {
     const c = new Map<number, number>();
-    for (const t of [0.25, 0.5, 0.75]) {
+    // Many samples: at a hairpin the lines meet, and near that end a sample can fall in the next space.
+    for (const t of [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]) {
       const x = f.a[0] + (f.b[0] - f.a[0]) * t + sgn * 7 * nx, y = f.a[1] + (f.b[1] - f.a[1]) * t + sgn * 7 * ny;
       const l = labelAt(x, y);
       if (l) c.set(l, (c.get(l) ?? 0) + 1);
@@ -180,7 +181,18 @@ const finishIdx = kept.findIndex((f) => f.finish);
 const fin = kept[finishIdx];
 const strays = found.filter((f) => !crossing.includes(f) && Math.hypot(mid(f)[0] - mid(fin)[0], mid(f)[1] - mid(fin)[1]) < 400);
 const L0 = span(fin), n0 = [-(fin.b[1] - fin.a[1]) / L0, (fin.b[0] - fin.a[0]) / L0];
-const gridSide = Math.sign(strays.reduce((t, f) => t + (mid(f)[0] - mid(fin)[0]) * n0[0] + (mid(f)[1] - mid(fin)[1]) * n0[1], 0));
+if (process.env.DEBUG_GRID) for (const f of strays) console.log("stray", f.a, f.b, "len", f.len.toFixed(0), "cov", coverage(f).toFixed(2), "centred", centred(f), "side", Math.sign((mid(f)[0] - mid(fin)[0]) * n0[0] + (mid(f)[1] - mid(fin)[1]) * n0[1]));
+// No bracket strokes found (GB): the grid spaces carry more paint (brackets,
+// numbers) than the space on the other side of the finish.
+const paint = (piece: number) => {
+  const l = lab.data32S;
+  let area = 0, w = 0;
+  for (let i = 0; i < n; i++) if (l[i] === piece) { area++; if (white[i] === 1) w++; }
+  return w / (area || 1);
+};
+const gridSide = Math.sign(strays.reduce((t, f) => t + (mid(f)[0] - mid(fin)[0]) * n0[0] + (mid(f)[1] - mid(fin)[1]) * n0[1], 0))
+  || (paint(sides[finishIdx][0]) > paint(sides[finishIdx][1]) ? 1 : -1);
+if (process.env.DEBUG_GRID) console.log("paint", paint(sides[finishIdx][0]).toFixed(3), paint(sides[finishIdx][1]).toFixed(3), "strays", strays.length, "gridSide", gridSide);
 let piece = sides[finishIdx][gridSide > 0 ? 1 : 0]; // the space after the finish
 const order = [finishIdx];
 const pieceArea: number[] = [];
