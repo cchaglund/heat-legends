@@ -18,7 +18,7 @@
   --rule: 2px solid #000;
   --display: italic 800 19px/1.1 "Barlow Condensed", "Arial Narrow", sans-serif;
   --check: repeating-conic-gradient(#000 0 25%, #fff 0 50%) 0 0 / 12px 12px;
-  --tap: 52px;
+  --tap: 48px;
   color-scheme: light;
 }
 
@@ -34,8 +34,8 @@ body {
 #app { min-height: 100%; }
 /* Titles sit under a two-row chequered strip. */
 h1 {
-  font: var(--display); font-size: 48px; line-height: 0.92; text-transform: uppercase; letter-spacing: -0.01em;
-  margin: 4px 0 8px; padding-top: 24px;
+  font: var(--display); font-size: 40px; line-height: 0.92; text-transform: uppercase; letter-spacing: -0.01em;
+  margin: 0; padding-top: 20px;
   background: var(--check); background-repeat: repeat-x;
 }
 h2 { font: var(--display); font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 8px; }
@@ -51,11 +51,12 @@ small { font-size: 13px; }
   flex-direction: column;
   gap: 12px;
 }
-.screen.center { min-height: 100vh; justify-content: center; }
+.screen.center { min-height: 100vh; min-height: 100dvh; justify-content: center; }
+.screen p { margin: 0; }
 .stack { display: flex; flex-direction: column; gap: 12px; }
 .row { display: flex; gap: 8px; }
 .row > * { flex: 1; }
-.footer { margin-top: auto; padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.footer { margin-top: auto; padding-top: 4px; display: flex; flex-direction: column; gap: 8px; }
 .fullscreen { position: fixed; inset: 0; background: #000; color: var(--text); overflow: auto; }
 
 /* --- Buttons */
@@ -81,7 +82,7 @@ small { font-size: 13px; }
 .btn.primary:active { background: #333; }
 .btn.danger { border-style: dashed; }
 .btn.wide { width: 100%; }
-.btn.big { min-height: 68px; font-size: 26px; }
+.btn.big { min-height: 60px; font-size: 24px; }
 .btn.small { min-height: 40px; padding: 0 12px; font-size: 16px; }
 .btn.icon { width: var(--tap); padding: 0; font-size: 24px; }
 .btn small { font: 500 14px Barlow, sans-serif; text-transform: none; letter-spacing: 0; }
@@ -101,7 +102,7 @@ small { font-size: 13px; }
 .track-card img { width: 100%; height: auto; border-bottom: var(--rule); }
 .track-card span { padding: 12px 16px; }
 
-.area { border: var(--rule); padding: 12px; min-height: 96px; }
+.area { border: var(--rule); padding: 12px; }
 .area-legend { background: #000; color: #fff; }
 .area-out { border-style: dashed; }
 .chips, .palette { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -117,7 +118,7 @@ small { font-size: 13px; }
 .race-bar { display: flex; align-items: center; gap: 8px; padding-bottom: 8px; border-bottom: var(--rule); }
 .race-bar .round { flex: 1; display: flex; align-items: flex-end; gap: 8px; }
 .race-bar .round small { font: var(--display); font-size: 20px; text-transform: uppercase; }
-.race-bar .round b { font: var(--display); font-size: 80px; line-height: 0.8; }
+.race-bar .round b { font: var(--display); font-size: 72px; line-height: 0.8; }
 .fold { border: var(--rule); }
 .fold summary { padding: 14px 12px; font: var(--display); text-transform: uppercase; cursor: pointer; }
 .fold > :not(summary) { margin: 0 12px 12px; }

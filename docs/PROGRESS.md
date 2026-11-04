@@ -185,6 +185,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - [x] Decided D34: store scans, suggest a rescan on unusual noise.
 
 ## Findings & gotchas (read before touching vision code)
+- **UI height budget:** on an iPhone in Chrome/Safari the browser bars leave ~680 px of 874. Setup and race screens must fit that (check with a 390×680 viewport; `roles-tall` in the gallery is the tallest Cars layout, 649 px). Installed to the home screen (standalone PWA) there are no bars.
 - **Draft direction can be wrong:** `find-boundaries.ts` takes "forward" from the start-grid bracket strokes, or (none found, GB/USA) from which space next to the finish has more white paint. Weak on USA: the user reversed it in the annotator. Always have the user confirm the direction.
 - **Each print has its own asphalt colour** (France neutral grey, GB dark green-grey, Italy warm light grey, USA dark brown to near-black red). The old grey test (`max < 97 && chroma < 33`) only suits France. `find-boundaries.ts` has a per-track `ASPHALT` table; the app's detection mask now comes from the annotated space quads (`buildReferenceModel(cv, ref, road)`; same or slightly better on France: `ROAD=quads npm run test:vision`). Tools without `road` still use the grey test.
 - **Vitest can't `import` OpenCV.js** (its module object is thenable: "Promise.prototype.then called on incompatible receiver"). Tests that need cv `require` it instead (see `src/vision/scan.test.ts`). `scan.ts` etc. only import the `CV` *type*, so they stay testable.
@@ -206,6 +207,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - `fixtures-raw/` holds the original photos **with GPS EXIF**. It's git-ignored; never commit it. `reports/` is git-ignored too: regenerate it.
 
 ## Session log
+- **2026-11-04 (d)**: Screens fit above the phone's browser bars (user's screenshot): no paragraph margins, empty areas collapse, tap height 48, big buttons 60, title 40.
 - **2026-11-04 (c)**: User asked for 5 bold UI directions (design-principles skill): built as switchable themes + gallery compare page. User picked Chequered Flag (D37); made it the default, other themes removed.
 - **2026-11-04 (b)**: User annotated GB, Italy, USA (annotator fixes: speeds ≤15, speed ⇒ corner, flip stops at finish, reverse button, refused save kept as draft); all three shipped.
 - **2026-11-04 (a)**: User: move on to the other maps. Boundary drafts for GB/Italy/USA (per-track asphalt test, "boundary must cross the road" check, relaxed finish check); detection track mask from annotation quads; app lists tracks from `tracks/*.json`.

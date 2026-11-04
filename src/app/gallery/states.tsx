@@ -193,6 +193,13 @@ export const STATES: UiState[] = [
     render: () => <RolesScreen trackId={info.id} initial={{ red: "human", blue: "human", green: "human", yellow: "human", black: "human", silver: "human" }} onStart={noop} onBack={noop} />,
   },
   { id: "roles-set", group: "Setup", title: "Cars: roles set", render: () => <RolesScreen trackId={info.id} initial={roles} onStart={noop} onBack={noop} /> },
+  {
+    id: "roles-tall",
+    group: "Setup",
+    title: "Cars: tallest layout",
+    note: "Four cars in one area: the most chip rows. Must fit above the browser bars.",
+    render: () => <RolesScreen trackId={info.id} initial={{ red: "out", blue: "human", green: "legend", yellow: "out", black: "out", silver: "out" }} onStart={noop} onBack={noop} />,
+  },
 
   // --- Board scan
   { id: "scan-loading", group: "Board scan", title: "Preparing", render: () => fullscreen(<ScanPreview phase="loading" />) },
