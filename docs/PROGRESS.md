@@ -208,6 +208,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - `fixtures-raw/` holds the original photos **with GPS EXIF**. It's git-ignored; never commit it. `reports/` is git-ignored too: regenerate it.
 
 ## Session log
+- **2026-11-06 (b)**: D40: "Scan complete" dialog only once every space is green (was 85% average, which left grey spaces and confused the user).
 - **2026-11-06**: Bug from the user's GB play-test: yellow was sent to red's occupied spot (the sweep missed red at the frame edge). Fix: the move camera adds the other Legends' recorded spots for cars it doesn't see.
 - **2026-11-04 (f)**: D39: card drawn at round start; one Next round button (dashed + who's left / solid when all moved) replaces the locked button + link; more spacing.
 - **2026-11-04 (e)**: D38 round flow: start in round 1, Next round locked until all Legends moved (+ "anyway" link), help line above the Legend buttons; disabled primary buttons now look disabled.

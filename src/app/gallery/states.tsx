@@ -211,7 +211,7 @@ export const STATES: UiState[] = [
   { id: "scan-camera-error", group: "Board scan", title: "Camera blocked", render: () => fullscreen(<ScanPreview phase="loading" blank cameraError="Permission denied" />) },
   { id: "scan-start", group: "Board scan", title: "Scanning: just started", render: () => fullscreen(<ScanPreview phase="scanning" coverage={coverage(0, 0)} frames={1} />) },
   { id: "scan-partial", group: "Board scan", title: "Scanning: half done", render: () => fullscreen(<ScanPreview phase="scanning" coverage={coverage(24, 6)} frames={14} />) },
-  { id: "scan-enough", group: "Board scan", title: "Scanning: enough (dialog)", render: () => fullscreen(<ScanPreview phase="scanning" coverage={coverage(56, 4)} frames={31} />) },
+  { id: "scan-enough", group: "Board scan", title: "Scanning: complete (dialog)", render: () => fullscreen(<ScanPreview phase="scanning" coverage={coverage(track.spaces.length, 0)} frames={31} />) },
   { id: "scan-lost", group: "Board scan", title: "Scanning: board out of view", render: () => fullscreen(<ScanPreview phase="scanning" lost coverage={coverage(24, 6)} frames={14} />) },
   { id: "scan-saving", group: "Board scan", title: "Building the scan", render: () => fullscreen(<ScanPreview phase="saving" coverage={coverage(56, 4)} frames={31} />) },
   { id: "scan-error", group: "Board scan", title: "Error", render: () => fullscreen(<ScanPreview phase="error" error="no scan in progress" />) },

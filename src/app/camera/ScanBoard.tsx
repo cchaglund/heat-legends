@@ -1,6 +1,7 @@
 // Board scan (D32–D34): the user films the empty board; each frame that is
 // sharp and aligned goes into the scan, and a small map of the track fills
-// in as spaces get enough sharp views. Done builds the reference on the
+// in as spaces get enough sharp views. "Scan complete" waits for every space
+// (D40); Done works earlier, and unscanned parts fall back to the printed board. Done builds the reference on the
 // phone and stores it for this track.
 import type { ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
@@ -20,7 +21,6 @@ export type ScanBoardProps = {
   onCancel: () => void;
 };
 
-const ENOUGH = 0.85; // D32: aim for most of the track; the rest falls back to the printed board
 const MIN_TO_FINISH = 0.3;
 
 export function ScanBoard({ track, rescan, onDone, onCancel }: ScanBoardProps) {
@@ -98,7 +98,7 @@ export function ScanBoardView(p: ScanBoardViewProps) {
   const info = trackById(track.id)!;
   const covered = coverage.length ? coverage.reduce((s, c) => s + c, 0) / coverage.length : 0;
   const [keepGoing, setKeepGoing] = useState(false);
-  const done = phase === "scanning" && covered >= ENOUGH;
+  const done = phase === "scanning" && coverage.length > 0 && coverage.every((c) => c >= 1);
   return (
     <div class="cam">
       {p.background}
@@ -120,7 +120,7 @@ export function ScanBoardView(p: ScanBoardViewProps) {
           </p>
         )}
         {phase === "saving" && <p class="cam-msg">Building the scan…</p>}
-        {done && keepGoing && <p class="cam-msg">Enough is scanned: tap Done when you're finished.</p>}
+        {done && keepGoing && <p class="cam-msg">The whole track is scanned: tap Done when you're finished.</p>}
         <div class="row">
           <button class="btn" onClick={p.onCancel}>Cancel</button>
           <button class="btn primary" disabled={phase !== "scanning" || covered < MIN_TO_FINISH} onClick={p.onDone}>Done</button>
@@ -129,7 +129,7 @@ export function ScanBoardView(p: ScanBoardViewProps) {
       {done && !keepGoing && (
         <div class="cam-dialog" role="dialog" aria-labelledby="scan-done">
           <h2 id="scan-done">Scan complete</h2>
-          <p>{p.rescan ? "Enough of the track is scanned." : "Enough of the track is scanned. You can put the cars back on the board."}</p>
+          <p>{p.rescan ? "The whole track is scanned." : "The whole track is scanned. You can put the cars back on the board."}</p>
           <button class="btn primary wide big" onClick={p.onDone}>OK</button>
           <button class="link" onClick={() => setKeepGoing(true)}>Keep scanning</button>
         </div>
