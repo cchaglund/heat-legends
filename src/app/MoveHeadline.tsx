@@ -21,14 +21,9 @@ export function moveText(track: Track, m: Move): string {
   return s.text === "stays put" ? s.text : `→ ${s.text}${s.steps ? ` (+${s.steps})` : ""}`;
 }
 
-/** The car's name on a block of its colour, like the Legend buttons: yellow
- *  and silver text alone would vanish on white. */
+/** The car's name in its own colour. */
 export function CarTag({ colour }: { colour: CarColor }) {
-  return (
-    <span class="car-tag" style={{ background: CAR_HEX[colour], color: colour === "black" ? "#fff" : "#111" }}>
-      {carName(colour)}
-    </span>
-  );
+  return <span style={{ color: CAR_HEX[colour] }}>{carName(colour)}</span>;
 }
 
 export function MoveHeadline({ track, legend, move }: { track: Track; legend: CarColor; move: Move }) {
