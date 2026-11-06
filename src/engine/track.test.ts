@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { syntheticAnnotation } from "./synthetic";
-import { cornersAhead, deriveTrack, positionAtPoint, spaceAtPoint, spaceLabel, spotCenter } from "./track";
+import { cornersAhead, deriveTrack, diamondOf, positionAtPoint, spaceAtPoint, spaceLabel, spotCenter } from "./track";
 import type { TrackAnnotation } from "./types";
 
 const ann = () =>
@@ -72,6 +72,9 @@ describe("cornersAhead / spaceLabel", () => {
     [20, "space 20"],
     [39, "diamond 2 (space 39)"],
   ])("space %i → %s", (space, label) => expect(spaceLabel(t, space)).toBe(label));
+  it("gives the diamond only in front of a Corner Line", () => {
+    expect([19, 16, 15, 39].map((s) => diamondOf(t, s))).toEqual([0, 3, null, 2]);
+  });
 });
 
 describe("spaceAtPoint", () => {

@@ -4,11 +4,12 @@
 // drawn on the live picture. Tap mode stays one button away (D9).
 import type { ComponentChildren, Ref } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { positionAtPoint, resolveLegendMove, spaceLabel, spotCenter } from "../../engine";
+import { positionAtPoint, resolveLegendMove, spotCenter } from "../../engine";
 import type { Board, CarColor, LegendCard, LegendMove, Point, Track } from "../../engine";
 import { apply, invert, type H3 } from "../../vision/homography";
 import { confirmCars, sweepBaseline, viewShows, type View } from "../../vision/sweep";
 import { CAR_HEX, carName } from "../colours";
+import { CarTag, MoveHeadline } from "../MoveHeadline";
 import { trackById } from "../tracks";
 import { prepare, processFrame, resetTracking } from "./client";
 import { coverTransform, useCamera, useFrameLoop } from "./useCamera";
@@ -168,14 +169,12 @@ export function MoveCameraView(p: MoveCameraViewProps) {
       {p.background}
       <canvas ref={p.canvas} class="cam-overlay" />
       <div class="cam-top">
-        <b style={{ color: CAR_HEX[legend] }}>{carName(legend)}</b>
-        {phase === "sweep" && <span>Point at {carName(legend)} and move the phone slowly sideways, about a hand's width.</span>}
-        {phase === "live" && move && (
-          <span>
-            {spaceLabel(track, move.from.space)} → <b>{spaceLabel(track, move.to.space)}</b>
-            {move.to.spot === 1 ? " (outer spot)" : ""}
-          </span>
+        {phase === "live" && move ? (
+          <MoveHeadline track={track} legend={legend} move={move} />
+        ) : (
+          <b><CarTag colour={legend} /></b>
         )}
+        {phase === "sweep" && <span>Point at {carName(legend)} and move the phone slowly sideways, about a hand's width.</span>}
       </div>
       <div class="cam-bottom">
         {p.cameraError !== undefined && <p class="cam-msg">Camera: {p.cameraError}</p>}

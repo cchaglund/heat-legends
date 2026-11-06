@@ -4,13 +4,14 @@
 // or cleared. Everything is in reference px; the SVG overlay shares the
 // image's viewBox so a tap maps straight onto the track.
 import { useLayoutEffect, useRef, useState } from "preact/hooks";
-import { positionAtPoint, resolveLegendMove, spaceLabel, spotCenter } from "../../engine";
+import { positionAtPoint, resolveLegendMove, spotCenter } from "../../engine";
 import type { Board, CarColor, LegendMove, Position } from "../../engine";
 import { inPlayOf } from "../game";
 import { CAR_HEX, CAR_OUTLINE, carName } from "../colours";
 import { game } from "../store";
 import type { TrackInfo } from "../tracks";
 import { Swatch } from "../Swatch";
+import { MoveHeadline } from "../MoveHeadline";
 
 type Props = {
   info: TrackInfo;
@@ -135,10 +136,7 @@ export function TapMode({ info, legend, onDone, onCancel, initial = {} }: Props)
       <footer class="tap-panel">
         {move ? (
           <>
-            <p class="move-head">
-              {carName(legend)}: {spaceLabel(track, move.from.space)} → <b>{spaceLabel(track, move.to.space)}</b>
-              {move.to.spot === 1 ? " (outer spot)" : ""}
-            </p>
+            <MoveHeadline track={track} legend={legend} move={move} />
             <p class="muted">{move.reason}</p>
             <button class="btn primary wide big" onClick={() => onDone(move, board)}>Done</button>
           </>

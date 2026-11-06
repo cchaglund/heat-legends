@@ -164,7 +164,10 @@ small { font-size: 13px; }
   display: flex; flex-direction: column; gap: 10px;
 }
 .tap-panel p { margin: 0; }
-.move-head { font: var(--display); font-size: 26px; text-transform: uppercase; }
+.move-headline { display: flex; flex-direction: column; gap: 4px; }
+.move-headline p { margin: 0; font: var(--display); font-size: 30px; line-height: 1; text-transform: uppercase; }
+.move-count { color: var(--faint); }
+.car-tag { display: inline-block; padding: 0 6px 0 4px; }
 
 /* --- Overlays: sheets carry a chequered strip on top. */
 .sheet-backdrop { position: fixed; inset: 0; background: rgba(255, 255, 255, 0.7); display: flex; align-items: flex-end; z-index: 10; }

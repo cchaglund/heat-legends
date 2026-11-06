@@ -27,10 +27,16 @@ export function cornersAhead(track: Track, space: number): Array<{ corner: Corne
   return [...ahead, ...ahead.map((c) => ({ ...c, distance: c.distance + n }))];
 }
 
+/** The diamond (0–3) printed on `space`: the 4 spaces before a Corner Line. Null elsewhere. */
+export function diamondOf(track: Track, space: number): number | null {
+  const d = cornersAhead(track, space)[0].distance;
+  return d <= 3 ? d : null;
+}
+
 /** "diamond N (space X)" for the 4 spaces before a Corner Line, else "space X". */
 export function spaceLabel(track: Track, space: number): string {
-  const d = cornersAhead(track, space)[0].distance;
-  return d <= 3 ? `diamond ${d} (space ${space})` : `space ${space}`;
+  const d = diamondOf(track, space);
+  return d !== null ? `diamond ${d} (space ${space})` : `space ${space}`;
 }
 
 export function deriveTrack(ann: TrackAnnotation): Track {
