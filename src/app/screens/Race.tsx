@@ -3,8 +3,7 @@
 // is still to move until every Legend has moved, then solid; it works either
 // way. Each round starts with its card drawn; every change can be undone.
 import { useState } from "preact/hooks";
-import { spaceLabel } from "../../engine";
-import type { CarColor } from "../../engine";
+import type { CarColor, Track } from "../../engine";
 import { allLegendsMoved, canUndo, legendsOf, movedThisRound, startNextRound, tapLegend, undo } from "../game";
 import type { LogEntry } from "../game";
 import { CAR_HEX, carName } from "../colours";
@@ -12,6 +11,7 @@ import { game, update } from "../store";
 import { trackById } from "../tracks";
 import { Swatch } from "../Swatch";
 import { About } from "../About";
+import { moveText } from "../MoveHeadline";
 
 type Props = { onLegend: (legend: CarColor) => void; onEndRace: () => void; onRescan: () => void };
 
@@ -21,7 +21,7 @@ export function RaceScreen({ onLegend, onEndRace, onRescan }: Props) {
   const [about, setAbout] = useState(false);
   const { round, card } = g.deck;
   const legends = legendsOf(g.roles);
-  const label = (s: number) => spaceLabel(track, s);
+  const lastMove = (c: CarColor) => g.log.findLast((e) => e.colour === c && e.round === round);
   const moved = movedThisRound(g);
   const allMoved = allLegendsMoved(g);
 
@@ -59,7 +59,7 @@ export function RaceScreen({ onLegend, onEndRace, onRescan }: Props) {
               {done && <Swatch colour={c} size={28} />}
               <span>
                 <b>{carName(c)}</b>
-                <small>{g.positions[c] ? label(g.positions[c]!.space) : "position unknown"}</small>
+                <small>{done ? moveText(track, lastMove(c)!) : "to move"}</small>
               </span>
             </button>
           );
@@ -98,7 +98,7 @@ export function RaceScreen({ onLegend, onEndRace, onRescan }: Props) {
           <summary>Move history ({g.log.length})</summary>
           <ol class="log" reversed>
             {[...g.log].reverse().map((e, i) => (
-              <LogLine key={g.log.length - i} entry={e} label={label} />
+              <LogLine key={g.log.length - i} entry={e} track={track} />
             ))}
           </ol>
         </details>
@@ -123,12 +123,11 @@ function listNames(cs: CarColor[]): string {
   return names.length < 2 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
 
-function LogLine({ entry: e, label }: { entry: LogEntry; label: (s: number) => string }) {
+function LogLine({ entry: e, track }: { entry: LogEntry; track: Track }) {
   return (
     <li>
       <span class="log-head">
-        <small>R{e.round}</small> <Swatch colour={e.colour} size={14} /> {carName(e.colour)} moved {label(e.from.space)} →{" "}
-        {label(e.to.space)}
+        <small>R{e.round}</small> <Swatch colour={e.colour} size={14} /> {carName(e.colour)} {moveText(track, e)}
       </span>
       <small class="muted">{e.reason}</small>
     </li>

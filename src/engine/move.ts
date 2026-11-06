@@ -12,7 +12,7 @@
 //   the second Corner Line".
 // - D28 defence: a nominal distance below 0 becomes 0, and the walk back stops
 //   at the car's own space, where it keeps its spot.
-import { cornersAhead, forwardDistance, spaceAt, spaceLabel } from "./track";
+import { cornersAhead, forwardDistance, spaceAt } from "./track";
 import type { Board, CarColor, LegendCard, LegendMove, SpotIndex, Track } from "./types";
 
 export function resolveLegendMove(track: Track, board: Board, colour: CarColor, card: LegendCard): LegendMove {
@@ -39,16 +39,18 @@ export function resolveLegendMove(track: Track, board: Board, colour: CarColor, 
     why += `, but that would cross 2 corner lines, so stop before the second`;
   }
 
-  const nominal = spaceAt(track, from.space, steps);
+  // The reason explains in board terms only (D40): space numbers aren't printed
+  // on the board, and the target itself is the headline.
   for (let k = steps; k > 0; k--) {
     const space = spaceAt(track, from.space, k);
     const spot = freeSpot(board, colour, space);
     if (spot === undefined) continue;
-    const full = k < steps ? `; ${spaceLabel(track, nominal)} full` : "";
-    return { from, to: { space, spot }, reason: `${why}${full} → ${spaceLabel(track, space)}` };
+    const back = steps - k;
+    const full = back === 0 ? "" : back === 1 ? "; that space is full, so 1 back" : `; ${back} spaces in a row are full, so ${back} back`;
+    return { from, to: { space, spot }, reason: `${why}${full}.` };
   }
-  const full = steps > 0 ? `; everything up to ${spaceLabel(track, nominal)} full` : "";
-  return { from, to: from, reason: `${why}${full} → stays on ${spaceLabel(track, from.space)}` };
+  const full = steps > 0 ? "; every space up to there is full" : "";
+  return { from, to: from, reason: `${why}${full}, so it stays put.` };
 }
 
 // D13: raceline spot if both are free, else the free one. The mover's own spot counts as free.

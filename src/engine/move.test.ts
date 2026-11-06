@@ -56,18 +56,18 @@ describe("rulebook example (legends-example.png), card 4, corner limit 3", () =>
 
     // Green: past the line, 3 + 2 = 5, clears the corner (line after 19).
     expect(moves.green.to).toEqual(at(21));
-    expect(moves.green.reason).toBe("Past Legends Line: speed limit 3 + diamond 2 = 5 → space 21");
+    expect(moves.green.reason).toBe("Past Legends Line: speed limit 3 + diamond 2 = 5.");
     // Red: past the line, 3 + 1 = 4, ends on diamond 0: does not clear.
     expect(moves.red.to).toEqual(at(19));
-    expect(moves.red.reason).toBe("Past Legends Line: speed limit 3 + diamond 1 = 4 → diamond 0 (space 19)");
+    expect(moves.red.reason).toBe("Past Legends Line: speed limit 3 + diamond 1 = 4.");
     // Blue: behind the line, 18 would cross → diamond 3 (Green has left it).
     expect(moves.blue.to).toEqual(at(16));
     expect(moves.blue.reason).toBe(
-      "Behind Legends Line: top speed 18 would cross the corner line (limit 3), so diamond 3 → diamond 3 (space 16)",
+      "Behind Legends Line: top speed 18 would cross the corner line (limit 3), so diamond 3.",
     );
     // Yellow: behind the line, 11 fits → moves 11.
     expect(moves.yellow.to).toEqual(at(11));
-    expect(moves.yellow.reason).toBe("Behind Legends Line: top speed 11 → space 11");
+    expect(moves.yellow.reason).toBe("Behind Legends Line: top speed 11.");
   });
 });
 
@@ -83,30 +83,30 @@ type Case = {
 
 const cases: Case[] = [
   // Rule B
-  { name: "B: top speed ending on diamond 0 is not crossing", from: at(5), card: [14, 2], to: at(19), reason: /top speed 14 → diamond 0 \(space 19\)/ },
-  { name: "B: one more would cross → diamond space", from: at(5), card: [15, 2], to: at(17), reason: /would cross.*→ diamond 2 \(space 17\)/ },
+  { name: "B: top speed ending on diamond 0 is not crossing", from: at(5), card: [14, 2], to: at(19), reason: /top speed 14\.$/ },
+  { name: "B: one more would cross → diamond space", from: at(5), card: [15, 2], to: at(17), reason: /would cross.*so diamond 2\.$/ },
   { name: "B: diamond 0 is the space touching the line", from: at(5), card: [19, 0], to: at(19) },
   { name: "B: on the Legends Line's near side counts as behind", from: at(14), card: [10, 1], to: at(18), reason: /^Behind/ },
-  { name: "B: wraps around the loop", from: at(38), card: [12, 0], to: at(10), reason: /top speed 12 → space 10/ },
-  { name: "B: second corner, diamond 1", from: at(25), card: [10, 1], to: at(33), reason: /limit 5.*diamond 1 \(space 33\)/ },
+  { name: "B: wraps around the loop", from: at(38), card: [12, 0], to: at(10), reason: /top speed 12\.$/ },
+  { name: "B: second corner, diamond 1", from: at(25), card: [10, 1], to: at(33), reason: /limit 5.*so diamond 1\.$/ },
   // Rule A
   { name: "A: first space past the Legends Line", from: at(15), card: [19, 0], to: at(18), reason: /^Past.*speed limit 3 \+ diamond 0 = 3/ },
-  { name: "A: from diamond 0 itself", from: at(19), card: [19, 3], to: at(25), reason: /= 6 → space 25/ },
+  { name: "A: from diamond 0 itself", from: at(19), card: [19, 3], to: at(25), reason: /= 6\.$/ },
   { name: "A: second corner uses its own speed limit", from: at(31), card: [10, 2], to: at(38), reason: /speed limit 5 \+ diamond 2 = 7/ },
   // D13 full spaces
   { name: "D13: raceline spot taken → the other spot", from: at(16), card: [10, 2], others: { red: at(21, 0) }, to: at(21, 1) },
   { name: "D13: other spot taken → raceline", from: at(16), card: [10, 2], others: { red: at(21, 1) }, to: at(21, 0) },
-  { name: "D13: A target full → back one", from: at(16), card: [10, 2], others: full(21), to: at(20), reason: /space 21 full → space 20$/ },
-  { name: "D13: A full walk-back can fall short of the corner", from: at(17), card: [10, 0], others: { ...full(20), red: at(19, 1) }, to: at(19, 0), reason: /space 20 full → diamond 0 \(space 19\)$/ },
-  { name: "D13: B top speed target full", from: at(0), card: [11, 0], others: full(11), to: at(10), reason: /space 11 full → space 10$/ },
-  { name: "D13: B diamond full → next diamond back", from: at(5), card: [18, 2], others: full(17), to: at(16), reason: /diamond 2 \(space 17\) full → diamond 3 \(space 16\)$/ },
-  { name: "D13: several full spaces in a row", from: at(5), card: [18, 0], others: { ...full(19), red: at(18, 0), blue: at(18, 1) }, to: at(17) },
+  { name: "D13: A target full → back one", from: at(16), card: [10, 2], others: full(21), to: at(20), reason: /that space is full, so 1 back\.$/ },
+  { name: "D13: A full walk-back can fall short of the corner", from: at(17), card: [10, 0], others: { ...full(20), red: at(19, 1) }, to: at(19, 0), reason: /that space is full, so 1 back\.$/ },
+  { name: "D13: B top speed target full", from: at(0), card: [11, 0], others: full(11), to: at(10), reason: /that space is full, so 1 back\.$/ },
+  { name: "D13: B diamond full → next diamond back", from: at(5), card: [18, 2], others: full(17), to: at(16), reason: /so diamond 2; that space is full, so 1 back\.$/ },
+  { name: "D13: several full spaces in a row", from: at(5), card: [18, 0], others: { ...full(19), red: at(18, 0), blue: at(18, 1) }, to: at(17), reason: /2 spaces in a row are full, so 2 back\.$/ },
   // Only 6 colours exist, so use a short (synthetic) top speed of 2.
-  { name: "D13: all full up to own space → stays in own spot", from: at(0, 1), card: [2, 0], others: { ...full(2), red: at(1, 0), blue: at(1, 1), yellow: at(0, 0) }, to: at(0, 1), reason: /space 2 full → stays on space 0$/ },
+  { name: "D13: all full up to own space → stays in own spot", from: at(0, 1), card: [2, 0], others: { ...full(2), red: at(1, 0), blue: at(1, 1), yellow: at(0, 0) }, to: at(0, 1), reason: /every space up to there is full, so it stays put\.$/ },
   // 2-corner cap
-  { name: "cap: crossing 2 lines → diamond 0 of the second", track: chicane, from: at(17), card: [10, 1], to: at(23), reason: /cross 2 corner lines.*→ diamond 0 \(space 23\)$/ },
+  { name: "cap: crossing 2 lines → diamond 0 of the second", track: chicane, from: at(17), card: [10, 1], to: at(23), reason: /cross 2 corner lines, so stop before the second\.$/ },
   { name: "cap: exactly reaching diamond 0 of the second is allowed", track: chicane, from: at(17), card: [10, 0], to: at(23), reason: /^(?!.*2 corner lines)/ },
-  { name: "cap + D13: second corner's diamond 0 full → first free before it", track: chicane, from: at(17), card: [10, 3], others: full(23), to: at(22), reason: /diamond 0 \(space 23\) full → diamond 1 \(space 22\)$/ },
+  { name: "cap + D13: second corner's diamond 0 full → first free before it", track: chicane, from: at(17), card: [10, 3], others: full(23), to: at(22), reason: /second; that space is full, so 1 back\.$/ },
   { name: "cap + D13: one spot left on diamond 0", track: chicane, from: at(16), card: [10, 3], others: { red: at(23, 0) }, to: at(23, 1) },
 ];
 
@@ -125,7 +125,7 @@ describe("resolveLegendMove", () => {
     const bad: Track = { ...track, corners: [{ after: 19, speedLimit: 3, legendsAfter: 17 }] };
     const move = resolveLegendMove(bad, { green: at(17, 1) }, "green", card("green", 10, 3));
     expect(move.to).toEqual(at(17, 1));
-    expect(move.reason).toMatch(/stays on diamond 2 \(space 17\)$/);
+    expect(move.reason).toMatch(/so it stays put\.$/);
   });
 
   it("throws for a colour not on the board", () => {
