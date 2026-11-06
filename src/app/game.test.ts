@@ -12,6 +12,7 @@ import {
   inPlayOf,
   legendsOf,
   newGame,
+  otherLegends,
   recordMove,
   serialize,
   startNextRound,
@@ -75,6 +76,14 @@ describe("round flow", () => {
     expect(Object.keys(merged.positions).sort()).toEqual(["blue", "green", "red"]);
     const replaced = recordMove(g, "red", move, { red: move.from }, true);
     expect(Object.keys(replaced.positions)).toEqual(["red"]);
+  });
+
+  it("hands the move camera the other Legends' spots, not the humans'", () => {
+    let g = newGame("france", roles, cards, rng);
+    g = recordMove(g, "red", move, { blue: { space: 20, spot: 0 } });
+    // Red was sent to 15; if green's sweep misses red, green must still see 15 half full.
+    expect(otherLegends(g, "green")).toEqual({ red: move.to });
+    expect(otherLegends(g, "red")).toEqual({});
   });
 
   it("undoes one action at a time back to the start", () => {

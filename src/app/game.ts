@@ -66,6 +66,15 @@ export function recordMove(g: GameState, colour: CarColor, move: LegendMove, boa
   return push(g, { positions, log: [...g.log, entry] });
 }
 
+/** Where the other Legends stand: they move only when the app shows them, so
+ *  their recorded spot holds until their next move. The move camera falls back
+ *  on these when its sweep misses a car (a human car's spot is stale after its turn). */
+export function otherLegends(g: GameState, mover: CarColor): Board {
+  const out: Board = {};
+  for (const c of legendsOf(g.roles)) if (c !== mover && g.positions[c]) out[c] = g.positions[c];
+  return out;
+}
+
 /** Legends with a recorded move this round. A tap that was cancelled doesn't count. */
 export const movedThisRound = (g: GameState): Set<CarColor> =>
   new Set(g.log.filter((e) => e.round === g.deck.round).map((e) => e.colour));

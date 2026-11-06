@@ -21,6 +21,8 @@ export type MoveCameraProps = {
   /** Every colour in play (Legends and humans): all of them are detected (D8). */
   inPlay: CarColor[];
   card: LegendCard;
+  /** Recorded spots of the other Legends, used for any the sweep doesn't see. */
+  known?: Board;
   /** Called when the user finishes: the move that was shown, or null if they gave up. */
   onDone: (result: MoveResult | null) => void;
   /** The user asked to place the Legend by hand instead (tap mode, D9). */
@@ -42,7 +44,7 @@ export type Phase = "loading" | "sweep" | "notFound" | "live" | "error";
 export type Found = { board: Board; move: LegendMove; targetSeen: boolean };
 type Dot = { color: CarColor; x: number; y: number };
 
-export function MoveCamera({ track, legend, inPlay, card, onDone, onTapMode, onRescan }: MoveCameraProps) {
+export function MoveCamera({ track, legend, inPlay, card, known = {}, onDone, onTapMode, onRescan }: MoveCameraProps) {
   const info = trackById(track.id)!;
   const { video, state } = useCamera();
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -84,7 +86,7 @@ export function MoveCamera({ track, legend, inPlay, card, onDone, onTapMode, onR
       if (performance.now() - sweepStart.current > MAX_SWEEP_MS) notFound();
       return;
     }
-    const result = resolve(track, legend, card, vs);
+    const result = resolve(track, legend, card, vs, known);
     if (result) {
       resetSweepMisses();
       setFound(result);
@@ -235,9 +237,10 @@ export function drawOverlay(c: HTMLCanvasElement, track: Track, screen: ((p: Poi
   if (move) drawArrow(ctx, track, move, screen);
 }
 
-/** Cars confirmed by the sweep → board → the Legend's move; null while the Legend isn't confirmed. */
-function resolve(track: Track, legend: CarColor, card: LegendCard, views: View[]): Found | null {
-  const board: Board = {};
+/** Cars confirmed by the sweep (plus known Legends it missed) → board → the
+ *  Legend's move; null while the Legend isn't confirmed. */
+function resolve(track: Track, legend: CarColor, card: LegendCard, views: View[], known: Board): Found | null {
+  const board: Board = { ...known };
   for (const c of confirmCars(views)) {
     const pos = positionAtPoint(track, c.x, c.y);
     if (pos) board[c.color] = pos;

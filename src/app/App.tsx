@@ -4,7 +4,7 @@
 import { MoveCamera, ScanBoard } from "./camera";
 import type { MoveResult } from "./camera";
 import { spotCenter } from "../engine";
-import { inPlayOf, recordMove } from "./game";
+import { inPlayOf, otherLegends, recordMove } from "./game";
 import { game, savedGame, screen, setGame, update } from "./store";
 import { trackById } from "./tracks";
 import { UpdateBanner } from "./UpdateBanner";
@@ -99,6 +99,7 @@ function Current() {
             legend={s.legend}
             inPlay={inPlayOf(g.roles)}
             card={g.deck.card!}
+            known={otherLegends(g, s.legend)}
             onDone={(result: MoveResult | null) => {
               if (result) update((g) => recordMove(g, s.legend, result.move, result.board));
               go({ name: "race" });

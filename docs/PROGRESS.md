@@ -185,6 +185,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - [x] Decided D34: store scans, suggest a rescan on unusual noise.
 
 ## Findings & gotchas (read before touching vision code)
+- **The move camera's board is only what the sweep confirms.** A car at the edge of the frame gets missed, and the engine then treats its spot as free (user's GB play-test: yellow was sent onto red's spot on 15). The other Legends' recorded spots now fill in for cars the sweep misses (`otherLegends` in `game.ts`); human cars can't be filled in, as their spot is stale after their turn.
 - **UI height budget:** on an iPhone in Chrome/Safari the browser bars leave ~680 px of 874. Setup and race screens must fit that (check with a 390×680 viewport; `roles-tall` in the gallery is the tallest Cars layout, 649 px). Installed to the home screen (standalone PWA) there are no bars.
 - **Draft direction can be wrong:** `find-boundaries.ts` takes "forward" from the start-grid bracket strokes, or (none found, GB/USA) from which space next to the finish has more white paint. Weak on USA: the user reversed it in the annotator. Always have the user confirm the direction.
 - **Each print has its own asphalt colour** (France neutral grey, GB dark green-grey, Italy warm light grey, USA dark brown to near-black red). The old grey test (`max < 97 && chroma < 33`) only suits France. `find-boundaries.ts` has a per-track `ASPHALT` table; the app's detection mask now comes from the annotated space quads (`buildReferenceModel(cv, ref, road)`; same or slightly better on France: `ROAD=quads npm run test:vision`). Tools without `road` still use the grey test.
@@ -207,6 +208,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - `fixtures-raw/` holds the original photos **with GPS EXIF**. It's git-ignored; never commit it. `reports/` is git-ignored too: regenerate it.
 
 ## Session log
+- **2026-11-06**: Bug from the user's GB play-test: yellow was sent to red's occupied spot (the sweep missed red at the frame edge). Fix: the move camera adds the other Legends' recorded spots for cars it doesn't see.
 - **2026-11-04 (f)**: D39: card drawn at round start; one Next round button (dashed + who's left / solid when all moved) replaces the locked button + link; more spacing.
 - **2026-11-04 (e)**: D38 round flow: start in round 1, Next round locked until all Legends moved (+ "anyway" link), help line above the Legend buttons; disabled primary buttons now look disabled.
 - **2026-11-04 (d)**: Screens fit above the phone's browser bars (user's screenshot): no paragraph margins, empty areas collapse, tap height 48, big buttons 60, title 40.
