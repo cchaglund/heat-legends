@@ -19,7 +19,7 @@ import { RolesScreen } from "../screens/Roles";
 import { RaceScreen } from "../screens/Race";
 import { TapMode } from "../screens/TapMode";
 
-export type UiState = { id: string; group: string; title: string; note?: string; render: () => ComponentChildren };
+export type UiState = { id: string; group: string; title: string; note?: string; landscape?: boolean; render: () => ComponentChildren };
 
 const info = TRACKS[0];
 const track = info.track;
@@ -82,7 +82,10 @@ function StillCamera({ centre, span = 460, blur, children }: {
   blur?: boolean;
   children: (screen: (p: Point) => Point, picture: ComponentChildren) => ComponentChildren;
 }) {
-  const W = window.innerWidth, H = window.innerHeight;
+  // A phone held sideways gives the picture only the left part (camera.css, D41).
+  const sideways = window.innerWidth > window.innerHeight && window.innerHeight <= 540;
+  const W = sideways ? window.innerWidth - Math.min(300, Math.max(240, 0.36 * window.innerWidth)) : window.innerWidth;
+  const H = window.innerHeight;
   const s = W / span;
   const screen = (p: Point) => ({ x: W / 2 + (p.x - centre.x) * s, y: H / 2 + (p.y - centre.y) * s });
   const origin = screen({ x: 0, y: 0 });
@@ -294,4 +297,23 @@ export const STATES: UiState[] = [
       <TapMode info={info} legend="yellow" initial={{ move: resolveLegendMove(track, midRace.positions, "yellow", cardOf(midRace)) }} onDone={noop} onCancel={noop} />
     )),
   },
+
+  // --- Phone held sideways (D41)
+  ...(
+    [
+      { id: "move-sweep-mid", title: "Sweep: halfway" },
+      { id: "move-sweep-lost", title: "Sweep: board out of view" },
+      { id: "move-live", title: "Live arrow" },
+      { id: "move-live-outer", title: "Live arrow: outer spot" },
+      { id: "move-rescan", title: "Not found again: rescan?" },
+      { id: "scan-partial", title: "Board scan: half done" },
+      { id: "scan-enough", title: "Board scan: enough (dialog)" },
+    ] as const
+  ).map(({ id, title }): UiState => ({
+    id: `${id}-landscape`,
+    group: "Phone held sideways",
+    title,
+    landscape: true,
+    render: () => STATES.find((s) => s.id === id)!.render(),
+  })),
 ];
