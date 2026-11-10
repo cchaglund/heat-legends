@@ -82,10 +82,7 @@ function StillCamera({ centre, span = 460, blur, children }: {
   blur?: boolean;
   children: (screen: (p: Point) => Point, picture: ComponentChildren) => ComponentChildren;
 }) {
-  // A phone held sideways gives the picture only the left part (camera.css, D41).
-  const sideways = window.innerWidth > window.innerHeight && window.innerHeight <= 540;
-  const W = sideways ? window.innerWidth - Math.min(300, Math.max(240, 0.36 * window.innerWidth)) : window.innerWidth;
-  const H = window.innerHeight;
+  const W = window.innerWidth, H = window.innerHeight;
   const s = W / span;
   const screen = (p: Point) => ({ x: W / 2 + (p.x - centre.x) * s, y: H / 2 + (p.y - centre.y) * s });
   const origin = screen({ x: 0, y: 0 });

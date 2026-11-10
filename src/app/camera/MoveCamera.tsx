@@ -177,31 +177,29 @@ export function MoveCameraView(p: MoveCameraViewProps) {
         {phase === "sweep" && <span>Point at {carName(legend)} and move the phone slowly sideways, about a hand's width.</span>}
       </div>
       <div class="cam-bottom">
-        {p.cameraError !== undefined && <p class="cam-msg">Camera: {p.cameraError}</p>}
-        {phase === "loading" && p.cameraError === undefined && <p class="cam-msg">Preparing… (the first time takes a while)</p>}
-        {phase === "error" && <p class="cam-msg">Something went wrong: {p.error}</p>}
-        {phase === "sweep" && (
-          <>
-            <div class="cam-progress"><div style={{ width: `${Math.round(p.progress * 100)}%` }} /></div>
-            {p.lost && <p class="cam-msg">Can't see the board: point at the track.</p>}
-          </>
-        )}
-        {phase === "notFound" && !p.suggestRescan && <p class="cam-msg">Couldn't find {carName(legend)}. Sweep again over it, or place it by hand.</p>}
-        {phase === "notFound" && p.suggestRescan && (
-          <p class="cam-msg warn">
-            Still can't find {carName(legend)}. If the light has changed since the board was scanned, a rescan usually fixes it. The cars can
-            stay on the board.
-          </p>
-        )}
-        {phase === "live" && found && (
-          <>
-            <p class="cam-msg">{found.move.reason}</p>
-            {!found.targetSeen && (
-              <p class="cam-msg warn">I couldn't see the target space. If a car is there, {carName(legend)} stops earlier: check it.</p>
-            )}
-            {p.lost && <p class="cam-msg">Point the camera at the board to see the arrow.</p>}
-          </>
-        )}
+        {phase === "sweep" && <div class="cam-progress"><div style={{ width: `${Math.round(p.progress * 100)}%` }} /></div>}
+        <div class="cam-msgs">
+          {p.cameraError !== undefined && <p class="cam-msg">Camera: {p.cameraError}</p>}
+          {phase === "loading" && p.cameraError === undefined && <p class="cam-msg">Preparing… (the first time takes a while)</p>}
+          {phase === "error" && <p class="cam-msg">Something went wrong: {p.error}</p>}
+          {phase === "sweep" && p.lost && <p class="cam-msg">Can't see the board: point at the track.</p>}
+          {phase === "notFound" && !p.suggestRescan && <p class="cam-msg">Couldn't find {carName(legend)}. Sweep again over it, or place it by hand.</p>}
+          {phase === "notFound" && p.suggestRescan && (
+            <p class="cam-msg warn">
+              Still can't find {carName(legend)}. If the light has changed since the board was scanned, a rescan usually fixes it. The cars can
+              stay on the board.
+            </p>
+          )}
+          {phase === "live" && found && (
+            <>
+              <p class="cam-msg">{found.move.reason}</p>
+              {!found.targetSeen && (
+                <p class="cam-msg warn">I couldn't see the target space. If a car is there, {carName(legend)} stops earlier: check it.</p>
+              )}
+              {p.lost && <p class="cam-msg">Point the camera at the board to see the arrow.</p>}
+            </>
+          )}
+        </div>
         <div class="row">
           <button class="btn" onClick={p.onCancel}>Cancel</button>
           {(phase === "notFound" || phase === "live") && <button class="btn" onClick={p.onSweepAgain}>Sweep again</button>}

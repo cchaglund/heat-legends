@@ -111,16 +111,18 @@ export function ScanBoardView(p: ScanBoardViewProps) {
       </div>
       <TrackMap track={track} width={info.width} height={info.height} coverage={coverage} />
       <div class="cam-bottom">
-        {p.cameraError !== undefined && <p class="cam-msg">Camera: {p.cameraError}</p>}
-        {phase === "loading" && p.cameraError === undefined && <p class="cam-msg">Preparing… (the first time takes a while)</p>}
-        {phase === "error" && <p class="cam-msg">Something went wrong: {p.error}</p>}
-        {phase === "scanning" && (
-          <p class="cam-msg">
-            {p.lost ? "Can't see the board: point at the track." : `${Math.round(covered * 100)}% of the track scanned · ${p.frames} frames`}
-          </p>
-        )}
-        {phase === "saving" && <p class="cam-msg">Building the scan…</p>}
-        {done && keepGoing && <p class="cam-msg">The whole track is scanned: tap Done when you're finished.</p>}
+        <div class="cam-msgs">
+          {p.cameraError !== undefined && <p class="cam-msg">Camera: {p.cameraError}</p>}
+          {phase === "loading" && p.cameraError === undefined && <p class="cam-msg">Preparing… (the first time takes a while)</p>}
+          {phase === "error" && <p class="cam-msg">Something went wrong: {p.error}</p>}
+          {phase === "scanning" && (
+            <p class="cam-msg">
+              {p.lost ? "Can't see the board: point at the track." : `${Math.round(covered * 100)}% of the track scanned · ${p.frames} frames`}
+            </p>
+          )}
+          {phase === "saving" && <p class="cam-msg">Building the scan…</p>}
+          {done && keepGoing && <p class="cam-msg">The whole track is scanned: tap Done when you're finished.</p>}
+        </div>
         <div class="row">
           <button class="btn" onClick={p.onCancel}>Cancel</button>
           <button class="btn primary" disabled={phase !== "scanning" || covered < MIN_TO_FINISH} onClick={p.onDone}>Done</button>

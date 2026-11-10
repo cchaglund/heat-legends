@@ -186,6 +186,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 
 ## Findings & gotchas (read before touching vision code)
 - **The move camera's board is only what the sweep confirms.** A car at the edge of the frame gets missed, and the engine then treats its spot as free (user's GB play-test: yellow was sent onto red's spot on 15). The other Legends' recorded spots now fill in for cars the sweep misses (`otherLegends` in `game.ts`); human cars can't be filled in, as their spot is stale after their turn.
+- **Gallery ≠ phone for camera screens:** the gallery's camera picture is a `<div>` with an `<img>`; the real one is a `<video>`, which doesn't stretch between `left`/`right` (it keeps its own width). Size camera layers with `inset`/`width`, and check on the phone.
 - **UI height budget:** on an iPhone in Chrome/Safari the browser bars leave ~680 px of 874. Setup and race screens must fit that (check with a 390×680 viewport; `roles-tall` in the gallery is the tallest Cars layout, 649 px). Installed to the home screen (standalone PWA) there are no bars.
 - **Draft direction can be wrong:** `find-boundaries.ts` takes "forward" from the start-grid bracket strokes, or (none found, GB/USA) from which space next to the finish has more white paint. Weak on USA: the user reversed it in the annotator. Always have the user confirm the direction.
 - **Each print has its own asphalt colour** (France neutral grey, GB dark green-grey, Italy warm light grey, USA dark brown to near-black red). The old grey test (`max < 97 && chroma < 33`) only suits France. `find-boundaries.ts` has a per-track `ASPHALT` table; the app's detection mask now comes from the annotated space quads (`buildReferenceModel(cv, ref, road)`; same or slightly better on France: `ROAD=quads npm run test:vision`). Tools without `road` still use the grey test.
@@ -209,7 +210,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 
 ## Session log
 - **2026-11-06 (b)**: D40: "Scan complete" dialog only once every space is green (was 85% average, which left grey spaces and confused the user).
-- **2026-11-10**: D41 sideways camera layout (right-hand column, progress bar along the bottom); 7 landscape states in the gallery (844×390 frames, `landscape` flag on UiState).
+- **2026-11-10**: D41 sideways camera layout: floating cards over a full-screen picture (the first right-column version was rejected and had a <video> sizing bug); 7 landscape states in the gallery (844×390 frames, `landscape` flag on UiState).
 - **2026-11-06**: Bug from the user's GB play-test: yellow was sent to red's occupied spot (the sweep missed red at the frame edge). Fix: the move camera adds the other Legends' recorded spots for cars it doesn't see.
 - **2026-11-06**: D40 move headline "BLUE → DIAMOND 2 (+3)" (no space numbers), car name on a colour block; mockups in `reports/mockups/`.
 - **2026-11-04 (f)**: D39: card drawn at round start; one Next round button (dashed + who's left / solid when all moved) replaces the locked button + link; more spacing.
